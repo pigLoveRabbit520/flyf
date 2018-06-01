@@ -133,3 +133,23 @@ ushort get_rand_port()
     int number = rand() % 101 + 1; // 产生1-101的随机数
     return number + 1024;
 }
+
+void send_cmd(int client_socket, char* buffer)
+{
+    send(client_socket, buffer, BUFFER_SIZE, 0);
+    bzero(buffer, BUFFER_SIZE);
+}
+
+int get_respond(int client_socket, char* buffer, char* server_ip)
+{
+    bzero(buffer, BUFFER_SIZE);
+    int length = 0;
+    // 接受欢迎命令
+    length = recv(client_socket, buffer, BUFFER_SIZE, 0);
+    if(length < 0)
+    {
+        printf("Recieve Data From Server %s Failed!\n", server_ip);
+        exit(1);
+    }
+    return length;
+}
