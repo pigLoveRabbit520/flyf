@@ -13,7 +13,7 @@
 
 int client_cmd_port = 0;
 ushort get_rand_port();
-void send_cmd();
+void send_cmd(int client_socket, char* buffer);
 
 // 被动模式
 int main(int argc, char **argv)
@@ -68,37 +68,22 @@ int main(int argc, char **argv)
     bzero(send_buffer, BUFFER_SIZE);
     int length = 0;
     // 接受欢迎命令
-    length = recv(client_socket, recv_buffer, BUFFER_SIZE, 0);
-    if(length < 0)
-    {
-        printf("Recieve Data From Server %s Failed!\n", argv[1]);
-        exit(1);
-    } else {
-        printf("Recieve Data:\t %s From Server[%s]\n", recv_buffer, argv[1]);
-    }
+    length = get_respond(client_socket, recv_buffer, argv[1]);
+	printf("Recieve Data:\t %s From Server[%s]\n", recv_buffer, argv[1]);
+
     sprintf(send_buffer, "USER %s\r\n", "FTP");
-    send(client_socket, send_buffer, BUFFER_SIZE, 0);
-    bzero(recv_buffer, BUFFER_SIZE);
+    send_cmd(client_socket, send_buffer);
+
     // 331
-    length = recv(client_socket, recv_buffer, BUFFER_SIZE, 0);
-    if(length < 0)
-    {
-        printf("Recieve Data From Server %s Failed!\n", argv[1]);
-        exit(1);
-    }
+    length = get_respond(client_socket, recv_buffer, argv[1]);
     printf("Recieve Data:\t %s From Server[%s]\n", recv_buffer, argv[1]);
-    bzero(send_buffer, BUFFER_SIZE);
+
     sprintf(send_buffer,"PASS %s\r\n", "salamander");
-    send(client_socket, send_buffer, BUFFER_SIZE, 0);
-     // 230
-    length = recv(client_socket, recv_buffer, BUFFER_SIZE, 0);
-    if(length < 0)
-    {
-        printf("Recieve Data From Server %s Failed!\n", argv[1]);
-        exit(1);
-    } else {
-        printf("Recieve Data:\t %s From Server[%s]\n", recv_buffer, argv[1]);
-    }
+    send_cmd(client_socket, send_buffer);
+
+    // 230
+    length = get_respond(client_socket, recv_buffer, argv[1]);
+    printf("Recieve Data:\t %s From Server[%s]\n", recv_buffer, argv[1]);
  
 //     char file_name[FILE_NAME_MAX_SIZE+1];
 //     bzero(file_name, FILE_NAME_MAX_SIZE+1);
