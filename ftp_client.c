@@ -69,21 +69,21 @@ int main(int argc, char **argv)
     int length = 0;
     // 接受欢迎命令
     length = get_respond(client_socket, recv_buffer, argv[1]);
-	printf("Recieve Data:\t %s From Server[%s]\n", recv_buffer, argv[1]);
+	printf("%s\n", recv_buffer);
 
     sprintf(send_buffer, "USER %s\r\n", "FTP");
     send_cmd(client_socket, send_buffer);
 
     // 331
     length = get_respond(client_socket, recv_buffer, argv[1]);
-    printf("Recieve Data:\t %s From Server[%s]\n", recv_buffer, argv[1]);
+    printf("%s\n", recv_buffer);
 
     sprintf(send_buffer,"PASS %s\r\n", "salamander");
     send_cmd(client_socket, send_buffer);
 
     // 230
     length = get_respond(client_socket, recv_buffer, argv[1]);
-    printf("Recieve Data:\t %s From Server[%s]\n", recv_buffer, argv[1]);
+    printf("%s\n", recv_buffer);
  
 //     char file_name[FILE_NAME_MAX_SIZE+1];
 //     bzero(file_name, FILE_NAME_MAX_SIZE+1);
