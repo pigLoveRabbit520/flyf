@@ -5,15 +5,19 @@
 #include <stdlib.h>        // for exit
 #include <string.h>        // for bzero
 #include <time.h>
+#include <stdbool.h>
 
 
 #define FTP_SERVER_PORT 21 
 #define BUFFER_SIZE 1024
+#define USER_CMD_BUFFER_SIZE 50
 #define FILE_NAME_MAX_SIZE 512
 
 int client_cmd_port = 0;
 ushort get_rand_port();
 void send_cmd(int client_socket, char* buffer);
+bool start_with(const char *pre, const char *str);
+char *fgets_wrapper(char *buffer, size_t buflen, FILE *fp);
 
 // 被动模式
 int main(int argc, char **argv)
@@ -84,6 +88,24 @@ int main(int argc, char **argv)
     // 230
     length = get_respond(client_socket, recv_buffer, argv[1]);
     printf("%s\n", recv_buffer);
+
+    char user_cmd[USER_CMD_BUFFER_SIZE];
+    for (;;)
+    {
+        printf("%s>", "FTP");
+        if (fgets_wrapper(user_cmd, USER_CMD_BUFFER_SIZE, stdin) != 0)
+        {
+            if (start_with(user_cmd, "ls") == true)
+            {
+                sprintf(send_buffer, "LIST %s\r\n", "");
+                send_cmd(client_socket, send_buffer);
+
+                // 230
+                length = get_respond(client_socket, recv_buffer, argv[1]);
+                printf("%s\n", recv_buffer);
+            }
+        }
+    }
  
 //     char file_name[FILE_NAME_MAX_SIZE+1];
 //     bzero(file_name, FILE_NAME_MAX_SIZE+1);
@@ -137,4 +159,23 @@ int get_respond(int client_socket, char* buffer, char* server_ip)
         exit(1);
     }
     return length;
+}
+
+char *fgets_wrapper(char *buffer, size_t buflen, FILE *fp)
+{
+    if (fgets(buffer, buflen, fp) != 0)
+    {
+        size_t len = strlen(buffer);
+        if (len > 0 && buffer[len-1] == '\n')
+            buffer[len-1] = '\0';
+        return buffer;
+    }
+    return 0;
+}
+
+bool start_with(const char *pre, const char *str)
+{
+    size_t lenpre = strlen(pre),
+           lenstr = strlen(str);
+    return lenstr < lenpre ? false : strncmp(pre, str, lenpre) == 0;
 }
