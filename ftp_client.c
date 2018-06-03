@@ -11,8 +11,7 @@
 
 #define FTP_SERVER_PORT 21 
 #define BUFFER_SIZE 1024
-#define USER_CMD_BUFFER_SIZE 50
-#define CMD_READ_BUFFER_SIZE 20
+#define CMD_READ_BUFFER_SIZE 30
 #define FILE_NAME_MAX_SIZE 512
 
 int client_cmd_port = 0;
@@ -115,14 +114,40 @@ int main(int argc, char **argv)
     {
         exit(1);
     }
+    // 被动模式
+    struct sockaddr_in client_data_addr;
+    bzero(&client_data_addr, sizeof(client_data_addr)); // 把一段内存区的内容全部设置为0
+    client_data_addr.sin_family = AF_INET;    // internet协议族
+    client_data_addr.sin_addr.s_addr = htons(INADDR_ANY);
+    client_data_addr.sin_port = client_cmd_port + 1;
+    int client_data_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if(client_data_socket < 0)
+    {
+        printf("create client data socket failed!\n");
+        exit(1);
+    }
+    if(bind(client_data_socket, (struct sockaddr*)&client_data_addr, sizeof(client_data_addr)))
+    {
+        printf("client for data bind port failed!\n"); 
+        exit(1);
+    }
 
-    char user_cmd[USER_CMD_BUFFER_SIZE];
+    sprintf(send_buffer, "PASV\r\n");
+    send_cmd(client_socket, send_buffer);
+     // 227
+    length = get_respond(client_socket, recv_buffer, argv[1]);
+    printf("%s", recv_buffer);
+    if (!is_correct_respond(recv_buffer, 227))
+    {
+        exit(1);
+    }
+
     for (;;)
     {
         printf("FTP>");
-        if (fgets_wrapper(user_cmd, USER_CMD_BUFFER_SIZE, stdin) != 0)
+        if (fgets_wrapper(cmd_read, CMD_READ_BUFFER_SIZE, stdin) != 0)
         {
-            if (start_with(user_cmd, "ls"))
+            if (start_with(cmd_read, "ls"))
             {
                 sprintf(send_buffer, "LIST %s\r\n", "");
                 send_cmd(client_socket, send_buffer);
@@ -130,7 +155,7 @@ int main(int argc, char **argv)
                 // 230
                 length = get_respond(client_socket, recv_buffer, argv[1]);
                 printf("%s\n", recv_buffer);
-            } else if (start_with(user_cmd, "exit"))
+            } else if (start_with(cmd_read, "exit"))
             {
                 printf("Goodbye!\n");
                 exit(0);
