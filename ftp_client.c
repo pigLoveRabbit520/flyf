@@ -5,12 +5,14 @@
 #include <stdlib.h>        // for exit
 #include <string.h>        // for bzero
 #include <time.h>
+#include <unistd.h>
 #include <stdbool.h>
 
 
 #define FTP_SERVER_PORT 21 
 #define BUFFER_SIZE 1024
 #define USER_CMD_BUFFER_SIZE 50
+#define CMD_READ_BUFFER_SIZE 20
 #define FILE_NAME_MAX_SIZE 512
 
 int client_cmd_port = 0;
@@ -18,6 +20,7 @@ ushort get_rand_port();
 void send_cmd(int client_socket, char* buffer);
 bool start_with(const char *pre, const char *str);
 char *fgets_wrapper(char *buffer, size_t buflen, FILE *fp);
+bool is_correct_respond(const char *respond, int code); // 是否返回正确响应码
 
 // 被动模式
 int main(int argc, char **argv)
@@ -38,16 +41,15 @@ int main(int argc, char **argv)
     int client_socket = socket(AF_INET, SOCK_STREAM, 0);
     if(client_socket < 0)
     {
-        printf("Create Client Socket Failed!\n");
+        printf("create client socket failed!\n");
         exit(1);
     }
     //把客户机的socket和客户机的socket地址结构联系起来
     if(bind(client_socket, (struct sockaddr*)&client_addr, sizeof(client_addr)))
     {
-        printf("Client Bind Port Failed!\n"); 
+        printf("client bind port failed!\n"); 
         exit(1);
     }
-    printf("Client Bind Port %d Success!\n", client_cmd_port); 
  
     // 设置一个socket地址结构server_addr,代表服务器的internet地址, 端口
     struct sockaddr_in server_addr;
@@ -55,7 +57,7 @@ int main(int argc, char **argv)
     server_addr.sin_family = AF_INET;
     if(inet_aton(argv[1], &server_addr.sin_addr) == 0) //服务器的IP地址来自程序的参数
     {
-        printf("Server IP Address Error!\n");
+        printf("server IP address error!\n");
         exit(1);
     }
     server_addr.sin_port = htons(FTP_SERVER_PORT);
@@ -63,7 +65,7 @@ int main(int argc, char **argv)
     // 向服务器发起连接,连接成功后client_socket代表了客户机和服务器的一个socket连接
     if(connect(client_socket, (struct sockaddr*)&server_addr, server_addr_length) < 0)
     {
-        printf("Can Not Connect To %s!\n", argv[1]);
+        printf("can not connect To %s!\n", argv[1]);
         exit(1);
     }
     char recv_buffer[BUFFER_SIZE];
@@ -73,29 +75,54 @@ int main(int argc, char **argv)
     int length = 0;
     // 接受欢迎命令
     length = get_respond(client_socket, recv_buffer, argv[1]);
-	printf("%s\n", recv_buffer);
+	printf("%s", recv_buffer);
 
-    sprintf(send_buffer, "USER %s\r\n", "FTP");
+    char cmd_read[CMD_READ_BUFFER_SIZE];
+    // 输入用户名
+    printf("Name(%s:%s):", argv[1], getlogin());
+    if (fgets_wrapper(cmd_read, CMD_READ_BUFFER_SIZE, stdin) == 0) 
+    {
+        printf("read name failed\n");
+        exit(1);
+    }
+
+    sprintf(send_buffer, "USER %s\r\n", cmd_read);
     send_cmd(client_socket, send_buffer);
 
     // 331
     length = get_respond(client_socket, recv_buffer, argv[1]);
-    printf("%s\n", recv_buffer);
+    printf("%s", recv_buffer);
+    if (!is_correct_respond(recv_buffer, 331))
+    {
+        exit(1);
+    }
 
-    sprintf(send_buffer,"PASS %s\r\n", "salamander");
+    bzero(cmd_read, CMD_READ_BUFFER_SIZE);
+    // 输入密码
+    printf("Password:");
+    if (fgets_wrapper(cmd_read, CMD_READ_BUFFER_SIZE, stdin) == 0) 
+    {
+        printf("read password failed\n");
+        exit(1);
+    }
+    sprintf(send_buffer,"PASS %s\r\n", cmd_read);
     send_cmd(client_socket, send_buffer);
 
     // 230
     length = get_respond(client_socket, recv_buffer, argv[1]);
-    printf("%s\n", recv_buffer);
+    printf("%s", recv_buffer);
+    if (!is_correct_respond(recv_buffer, 230))
+    {
+        exit(1);
+    }
 
     char user_cmd[USER_CMD_BUFFER_SIZE];
     for (;;)
     {
-        printf("%s>", "FTP");
+        printf("FTP>");
         if (fgets_wrapper(user_cmd, USER_CMD_BUFFER_SIZE, stdin) != 0)
         {
-            if (start_with(user_cmd, "ls") == true)
+            if (start_with(user_cmd, "ls"))
             {
                 sprintf(send_buffer, "LIST %s\r\n", "");
                 send_cmd(client_socket, send_buffer);
@@ -173,9 +200,16 @@ char *fgets_wrapper(char *buffer, size_t buflen, FILE *fp)
     return 0;
 }
 
-bool start_with(const char *pre, const char *str)
+bool start_with(const char *str, const char *pre)
 {
     size_t lenpre = strlen(pre),
            lenstr = strlen(str);
     return lenstr < lenpre ? false : strncmp(pre, str, lenpre) == 0;
+}
+
+bool is_correct_respond(const char *respond, int code)
+{
+    char code_str[4];
+    sprintf(code_str, "%d", code);
+    return start_with(respond, code_str);
 }
