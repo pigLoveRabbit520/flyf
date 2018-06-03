@@ -130,6 +130,10 @@ int main(int argc, char **argv)
                 // 230
                 length = get_respond(client_socket, recv_buffer, argv[1]);
                 printf("%s\n", recv_buffer);
+            } else if (start_with(user_cmd, "exit"))
+            {
+                printf("Goodbye!\n");
+                exit(0);
             }
         }
     }
