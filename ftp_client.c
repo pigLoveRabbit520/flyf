@@ -166,13 +166,12 @@ int main(int argc, char **argv)
                     char data_buffer[4000];
                     bzero(data_buffer, 4000);
                     int length = recv(client_data_socket, data_buffer, 4000, 0);
-                    printf("%s", data_buffer);
-
+                    printf("%s\n", data_buffer);
                     close(client_data_socket);
                     exit(0);
                 } else {
                     int status = 0;
-                    waitpid(getpid(), &status, 0);
+                    waitpid(pid, &status, 0);
                 }
             } else if (start_with(cmd_read, "exit"))
             {
