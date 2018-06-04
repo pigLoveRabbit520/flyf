@@ -16,6 +16,14 @@
 #define CMD_READ_BUFFER_SIZE 30
 #define FILE_NAME_MAX_SIZE 512
 
+#define ERR_EXIT(m) \
+    do\
+    {\
+        perror(m);\
+        exit(EXIT_FAILURE);\
+    }\
+    while (0)\
+
 unsigned int client_cmd_port = 0;
 ushort get_rand_port();
 void send_cmd(int client_socket, char* buffer);
