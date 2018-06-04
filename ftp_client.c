@@ -21,6 +21,7 @@ void send_cmd(int client_socket, char* buffer);
 bool start_with(const char *pre, const char *str);
 char *fgets_wrapper(char *buffer, size_t buflen, FILE *fp);
 bool is_correct_respond(const char *respond, int code); // 是否返回正确响应码
+int cal_data_port(const char *recv_buffer);
 
 // 被动模式
 int main(int argc, char **argv)
@@ -61,9 +62,8 @@ int main(int argc, char **argv)
         exit(1);
     }
     server_addr.sin_port = htons(FTP_SERVER_PORT);
-    socklen_t server_addr_length = sizeof(server_addr);
     // 向服务器发起连接,连接成功后client_socket代表了客户机和服务器的一个socket连接
-    if(connect(client_socket, (struct sockaddr*)&server_addr, server_addr_length) < 0)
+    if(connect(client_socket, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0)
     {
         printf("can not connect To %s!\n", argv[1]);
         exit(1);
@@ -119,7 +119,7 @@ int main(int argc, char **argv)
     }
     // 被动模式
     struct sockaddr_in client_data_addr;
-    bzero(&client_data_addr, sizeof(client_data_addr)); // 把一段内存区的内容全部设置为0
+    bzero(&client_data_addr, sizeof(client_data_addr));
     client_data_addr.sin_family = AF_INET;    // internet协议族
     client_data_addr.sin_addr.s_addr = htons(INADDR_ANY);
     client_data_addr.sin_port = client_cmd_port + 1;
@@ -139,9 +139,26 @@ int main(int argc, char **argv)
     send_cmd(client_socket, send_buffer);
      // 227
     length = get_respond(client_socket, recv_buffer, argv[1]);
-    printf("%s", recv_buffer);
     if (!is_correct_respond(recv_buffer, 227))
     {
+        printf("enter passive mode failed\n");
+        exit(1);
+    }
+    int server_data_port = cal_data_port(recv_buffer); // 计算数据端口
+    printf("cal port is %d\n", server_data_port);
+    struct sockaddr_in server_data_addr;
+    bzero(&server_data_addr, sizeof(server_data_addr));
+    server_data_addr.sin_family = AF_INET;
+    if(inet_aton(argv[1], &server_data_addr.sin_addr) == 0) //服务器的IP地址来自程序的参数
+    {
+        printf("server IP address error!\n");
+        exit(1);
+    }
+    server_data_addr.sin_port = htons(server_data_port);
+    // 向服务器发起连接,连接成功后client_socket代表了客户机和服务器的一个socket连接
+    if(connect(client_data_socket, (struct sockaddr*)&server_data_addr, sizeof(server_data_addr)) < 0)
+    {
+        printf("can not connect to %s! on port %d\n", argv[1], server_data_port);
         exit(1);
     }
 
@@ -189,6 +206,7 @@ int main(int argc, char **argv)
 
     //关闭socket
     close(client_socket);
+    close(client_data_socket);
     return 0;
 }
 
@@ -244,4 +262,31 @@ bool is_correct_respond(const char *respond, int code)
     char code_str[4];
     sprintf(code_str, "%d", code);
     return start_with(respond, code_str);
+}
+
+int cal_data_port(const char *recv_buffer)
+{
+    char *pos1 = strchr(recv_buffer, '(');
+    char *pos2 = strchr(recv_buffer, ')');
+    char passive_res[25];
+    strncpy(passive_res, pos1 + 1, pos2 - pos1 - 1);
+    char *token;
+    const char delim[2] = ",";
+    token = strtok(passive_res, delim);
+    int token_idx = 0;
+    int p1, p2;
+    while(token != NULL)
+    {
+        if (token_idx == 4)
+        {
+            p1 = atoi(token);
+        } else if (token_idx == 5)
+        {
+            p2 = atoi(token);
+            break;
+        }
+        token = strtok(NULL, delim);
+        token_idx++;
+    }
+    return p1 * 256 + p2;
 }
