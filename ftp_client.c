@@ -7,6 +7,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <pwd.h>
 
 
 #define FTP_SERVER_PORT 21 
@@ -77,8 +78,10 @@ int main(int argc, char **argv)
 	printf("%s", recv_buffer);
 
     char cmd_read[CMD_READ_BUFFER_SIZE];
+    struct passwd *pws;
+    pws = getpwuid(geteuid());
     // 输入用户名
-    printf("Name(%s:%s):", argv[1], getlogin());
+    printf("Name(%s:%s):", argv[1], pws->pw_name);
     if (fgets_wrapper(cmd_read, CMD_READ_BUFFER_SIZE, stdin) == 0) 
     {
         printf("read name failed\n");
