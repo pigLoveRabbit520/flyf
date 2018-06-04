@@ -3,9 +3,10 @@
 #include <sys/socket.h>    // for socket
 #include <stdio.h>        // for printf
 #include <stdlib.h>        // for exit
-#include <string.h>        // for bzero
+#include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <sys/wait.h>
 #include <stdbool.h>
 #include <fcntl.h>
 #include <pwd.h>
@@ -157,12 +158,22 @@ int main(int argc, char **argv)
                     printf("LIST end failed\n");
                     continue;
                 }
-                char data_buffer[2000];
-                bzero(data_buffer, 2000);
-                int length = recv(client_data_socket, data_buffer, 2000, 0);
-                printf("%s", data_buffer);
+                pid_t pid;
+                if ((pid = fork()) < 0) {
+                    printf("fork error");
+                    continue;
+                } else if (pid == 0) {
+                    char data_buffer[4000];
+                    bzero(data_buffer, 4000);
+                    int length = recv(client_data_socket, data_buffer, 4000, 0);
+                    printf("%s", data_buffer);
 
-                close(client_data_socket);
+                    close(client_data_socket);
+                    exit(0);
+                } else {
+                    int status = 0;
+                    waitpid(getpid(), &status, 0);
+                }
             } else if (start_with(cmd_read, "exit"))
             {
                 printf("Goodbye!\n");
