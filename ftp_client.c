@@ -128,9 +128,24 @@ int main(int argc, char **argv)
                 sprintf(send_buffer, "LIST %s\r\n", "");
                 send_cmd(client_socket, send_buffer);
 
-                // 230
+                // 125开始传输 226 表明完成
                 length = get_respond(client_socket, recv_buffer, argv[1]);
-                printf("%s\n", recv_buffer);
+                if (!is_correct_respond(recv_buffer, 125))
+                {
+                    printf("LIST start failed\n");
+                    continue;
+                }
+
+                length = get_respond(client_socket, recv_buffer, argv[1]);
+                if (!is_correct_respond(recv_buffer, 226))
+                {
+                    printf("LIST end failed\n");
+                    continue;
+                }
+                char data_buffer[2000];
+                bzero(data_buffer, 2000);
+                int length = recv(client_data_socket, data_buffer, 2000, 0);
+                printf("%s\n", data_buffer);
             } else if (start_with(cmd_read, "exit"))
             {
                 printf("Goodbye!\n");
