@@ -7,6 +7,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <fcntl.h>
 #include <pwd.h>
 
 
@@ -24,6 +25,9 @@ bool is_correct_respond(const char *respond, int code); // 是否返回正确响
 unsigned int cal_data_port(const char *recv_buffer);
 int get_client_data_socket(unsigned int client_cmd_port);
 void connect_server(int socket, const char *server_ip, unsigned int server_port);
+
+void set_flag(int, int);
+void clr_flag(int, int);
 
 // 被动模式
 int main(int argc, char **argv)
@@ -104,19 +108,6 @@ int main(int argc, char **argv)
     {
         exit(1);
     }
-    // 被动模式
-    int client_data_socket = get_client_data_socket(client_cmd_port);
-    sprintf(send_buffer, "PASV\r\n");
-    send_cmd(client_socket, send_buffer);
-     // 227
-    length = get_respond(client_socket, recv_buffer, argv[1]);
-    if (!is_correct_respond(recv_buffer, 227))
-    {
-        printf("enter passive mode failed\n");
-        exit(1);
-    }
-    unsigned int server_data_port = cal_data_port(recv_buffer); // 计算数据端口
-    connect_server(client_data_socket, argv[1], server_data_port);
 
     for (;;)
     {
@@ -125,16 +116,32 @@ int main(int argc, char **argv)
         {
             if (start_with(cmd_read, "ls"))
             {
+                // 被动模式
+                int client_data_socket = get_client_data_socket(client_cmd_port);
+                sprintf(send_buffer, "PASV\r\n");
+                send_cmd(client_socket, send_buffer);
+                 // 227
+                length = get_respond(client_socket, recv_buffer, argv[1]);
+                if (!is_correct_respond(recv_buffer, 227))
+                {
+                    printf("enter passive mode failed\n");
+                    continue;
+                }
+                unsigned int server_data_port = cal_data_port(recv_buffer); // 计算数据端口
+                connect_server(client_data_socket, argv[1], server_data_port);
+
                 sprintf(send_buffer, "LIST %s\r\n", "");
                 send_cmd(client_socket, send_buffer);
 
-                // 125开始传输 226 表明完成
+                // 125开始传输 226表明完成
                 length = get_respond(client_socket, recv_buffer, argv[1]);
                 if (!is_correct_respond(recv_buffer, 125))
                 {
                     printf("LIST start failed\n");
                     continue;
                 }
+                // 非阻塞
+                set_flag(client_data_socket, O_NONBLOCK);
 
                 length = get_respond(client_socket, recv_buffer, argv[1]);
                 if (!is_correct_respond(recv_buffer, 226))
@@ -145,7 +152,9 @@ int main(int argc, char **argv)
                 char data_buffer[2000];
                 bzero(data_buffer, 2000);
                 int length = recv(client_data_socket, data_buffer, 2000, 0);
-                printf("%s\n", data_buffer);
+                printf("%s", data_buffer);
+
+                close(client_data_socket);
             } else if (start_with(cmd_read, "exit"))
             {
                 printf("Goodbye!\n");
@@ -177,7 +186,6 @@ int main(int argc, char **argv)
 
     //关闭socket
     close(client_socket);
-    close(client_data_socket);
     return 0;
 }
 
@@ -300,4 +308,15 @@ void connect_server(int socket, const char *server_ip, unsigned int server_port)
         printf("Can not connect to %s! on port %d\n", server_ip, server_port);
         exit(1);
     }
+}
+
+void set_flag(int fd, int flags)
+{
+    int val;
+    val = fcntl(fd, F_GETFL, 0);
+    if (val == -1)
+        printf("fcntl get flag error");
+    val |= flags;
+    if (fcntl(fd, F_SETFL, val) < 0)
+        printf("fcntl set flag error");
 }
