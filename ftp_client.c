@@ -11,7 +11,9 @@
 #include <fcntl.h>
 #include <pwd.h>
 #include <iconv.h>
+#include <errno.h>
 
+extern int errno;
 
 #define FTP_SERVER_PORT 21 
 #define BUFFER_SIZE 1024
@@ -35,6 +37,7 @@ bool is_correct_respond(const char *respond, int code); // 是否返回正确响
 unsigned int cal_data_port(const char *recv_buffer);
 int get_client_data_socket(unsigned int client_cmd_port);
 int connect_server(int socket, const char *server_ip, unsigned int server_port);
+int get_respond(int client_socket, char* buffer, const char* server_ip);
 
 int code_convert(const char *from_charset, const char *to_charset, char *inbuf, size_t inlen, char *outbuf, size_t outlen)  
 {
@@ -179,8 +182,10 @@ int main(int argc, char **argv)
                 }
                 unsigned int server_data_port = cal_data_port(recv_buffer); // 计算数据端口
                 int res = connect_server(client_data_socket, argv[1], server_data_port);
-                if (res < 0)
+                if (res < 0) {
+                    close(client_data_socket);
                     continue;
+                }
 
                 sprintf(send_buffer, "LIST %s\r\n", "");
                 send_cmd(client_socket, send_buffer);
@@ -201,25 +206,29 @@ int main(int argc, char **argv)
                     continue;
                 } else if (pid == 0) {
                     char data_buffer[BUFFER_SIZE];
-                    bzero(data_buffer, BUFFER_SIZE);
                     char *ptr = "";
                     int data_len = 0;
                     for (;;)
                     {
+                        bzero(data_buffer, BUFFER_SIZE);
                         int length = recv(client_data_socket, data_buffer, BUFFER_SIZE, 0);
-                        if (length == 0 || !is_connected(client_data_socket))
+                        if (length == 0)
                         {
                             close(client_data_socket);
                             break;
                         }
                         else if (length < 0)
                         {
+                            if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)
+                            {
+                                continue;
+                            }
                             close(client_data_socket);
                             printf("get data failed\n");
                             exit(1);
                         }
                         data_len += length;
-                        char *tmp_ptr = (char *)calloc(length + strlen(ptr) + 1, sizeof(char));
+                        char *tmp_ptr = (char *)calloc(data_len + 1, sizeof(char));
                         sprintf(tmp_ptr, "%s%s", ptr, data_buffer);
                         if (strlen(ptr) > 0) free(ptr);
                         ptr = tmp_ptr;
@@ -228,6 +237,7 @@ int main(int argc, char **argv)
                     g2u(ptr, strlen(ptr), tmp_ptr, data_len + 1);
                     printf("%s\n", ptr);
                     free(ptr);
+                    free(tmp_ptr);
                     exit(0);
                 } else {
                     length = get_respond(client_socket, recv_buffer, argv[1]);
@@ -287,7 +297,7 @@ void send_cmd(int client_socket, char* buffer)
     bzero(buffer, BUFFER_SIZE);
 }
 
-int get_respond(int client_socket, char* buffer, char* server_ip)
+int get_respond(int client_socket, char* buffer, const char* server_ip)
 {
     bzero(buffer, BUFFER_SIZE);
     int length = 0;
@@ -388,7 +398,7 @@ int connect_server(int socket, const char *server_ip, unsigned int server_port)
     // 向服务器发起连接,连接成功后socket代表了客户机和服务器的一个socket连接
     if(connect(socket, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0)
     {
-        printf("Can not connect to %s! on port %d\n", server_ip, server_port);
+        printf("Can not connect to %s on port %d\n", server_ip, server_port);
         perror("");
         return -1;
     }
