@@ -34,7 +34,7 @@ char *fgets_wrapper(char *buffer, size_t buflen, FILE *fp);
 bool is_correct_respond(const char *respond, int code); // 是否返回正确响应码
 unsigned int cal_data_port(const char *recv_buffer);
 int get_client_data_socket(unsigned int client_cmd_port);
-void connect_server(int socket, const char *server_ip, unsigned int server_port);
+int connect_server(int socket, const char *server_ip, unsigned int server_port);
 
 int code_convert(const char *from_charset, const char *to_charset, char *inbuf, size_t inlen, char *outbuf, size_t outlen)  
 {
@@ -51,12 +51,21 @@ int code_convert(const char *from_charset, const char *to_charset, char *inbuf, 
             return -1;  
     iconv_close(cd);
     return 0;  
-}  
-
+}
 
 int g2u(char *inbuf, size_t inlen, char *outbuf, size_t outlen)  
 {
     return code_convert("gb2312", "utf-8", inbuf, inlen, outbuf, outlen);  
+}
+
+bool is_connected(int socket_fd)
+{
+    int error = 0;
+    socklen_t len = sizeof (error);
+    int retval = getsockopt (socket_fd, SOL_SOCKET, SO_ERROR, &error, &len);
+    if (retval != 0) return false;
+    if (error != 0) return false;
+    return true;
 }
 
 void set_flag(int, int);
@@ -90,7 +99,11 @@ int main(int argc, char **argv)
         printf("client bind port failed!\n"); 
         exit(1);
     }
-    connect_server(client_socket, argv[1], FTP_SERVER_PORT);
+    int res = connect_server(client_socket, argv[1], FTP_SERVER_PORT);
+    if (res < 0)
+    {
+        exit(1);
+    }
 
     char recv_buffer[BUFFER_SIZE];
     char send_buffer[BUFFER_SIZE];
@@ -151,6 +164,10 @@ int main(int argc, char **argv)
             {
                 // 被动模式
                 int client_data_socket = get_client_data_socket(client_cmd_port);
+                if (client_data_socket < 0)
+                {
+                    continue;
+                }
                 sprintf(send_buffer, "PASV\r\n");
                 send_cmd(client_socket, send_buffer);
                  // 227
@@ -161,7 +178,9 @@ int main(int argc, char **argv)
                     continue;
                 }
                 unsigned int server_data_port = cal_data_port(recv_buffer); // 计算数据端口
-                connect_server(client_data_socket, argv[1], server_data_port);
+                int res = connect_server(client_data_socket, argv[1], server_data_port);
+                if (res < 0)
+                    continue;
 
                 sprintf(send_buffer, "LIST %s\r\n", "");
                 send_cmd(client_socket, send_buffer);
@@ -176,29 +195,47 @@ int main(int argc, char **argv)
                 // 非阻塞
                 set_flag(client_data_socket, O_NONBLOCK);
 
-                length = get_respond(client_socket, recv_buffer, argv[1]);
-                if (!is_correct_respond(recv_buffer, 226))
-                {
-                    printf("LIST end failed\n");
-                    continue;
-                }
                 pid_t pid;
                 if ((pid = fork()) < 0) {
                     printf("fork error");
                     continue;
                 } else if (pid == 0) {
-                    char data_buffer[4000];
-                    bzero(data_buffer, 4000);
-                    int length = recv(client_data_socket, data_buffer, 4000, 0);
-
-                    char *ptr = (char *)calloc(sizeof(data_buffer), sizeof(char));
-                    g2u(data_buffer, strlen(data_buffer), ptr, sizeof(data_buffer));
-
+                    char data_buffer[BUFFER_SIZE];
+                    bzero(data_buffer, BUFFER_SIZE);
+                    char *ptr = "";
+                    int data_len = 0;
+                    for (;;)
+                    {
+                        int length = recv(client_data_socket, data_buffer, BUFFER_SIZE, 0);
+                        if (length == 0 || !is_connected(client_data_socket))
+                        {
+                            close(client_data_socket);
+                            break;
+                        }
+                        else if (length < 0)
+                        {
+                            close(client_data_socket);
+                            printf("get data failed\n");
+                            exit(1);
+                        }
+                        data_len += length;
+                        char *tmp_ptr = (char *)calloc(length + strlen(ptr) + 1, sizeof(char));
+                        sprintf(tmp_ptr, "%s%s", ptr, data_buffer);
+                        if (strlen(ptr) > 0) free(ptr);
+                        ptr = tmp_ptr;
+                    }
+                    char *tmp_ptr = (char *)calloc(data_len + 1, sizeof(char));
+                    g2u(ptr, strlen(ptr), tmp_ptr, data_len + 1);
                     printf("%s\n", ptr);
                     free(ptr);
-                    close(client_data_socket);
                     exit(0);
                 } else {
+                    length = get_respond(client_socket, recv_buffer, argv[1]);
+                    if (!is_correct_respond(recv_buffer, 226))
+                    {
+                        printf("LIST end failed\n");
+                        continue;
+                    }
                     int status = 0;
                     waitpid(pid, &status, 0);
                 }
@@ -327,34 +364,35 @@ int get_client_data_socket(unsigned int client_cmd_port)
     int client_data_socket = socket(AF_INET, SOCK_STREAM, 0);
     if(client_data_socket < 0)
     {
-        printf("Create client data socket failed!\n");
-        exit(1);
+        perror("Create client data socket failed!\n");
     }
     if(bind(client_data_socket, (struct sockaddr*)&client_addr, sizeof(client_addr)))
     {
-        printf("Client for data bind port failed!\n"); 
-        exit(1);
+        perror("Client data socket bind port failed!\n");
+        return -1;
     }
     return client_data_socket;
 }
 
-void connect_server(int socket, const char *server_ip, unsigned int server_port)
+int connect_server(int socket, const char *server_ip, unsigned int server_port)
 {
     struct sockaddr_in server_addr;
     bzero(&server_addr, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
     if(inet_aton(server_ip, &server_addr.sin_addr) == 0) // 服务器的IP地址来自程序的参数
     {
-        printf("Server IP address error!\n");
-        exit(1);
+        perror("Server IP address error!\n");
+        return -1;
     }
     server_addr.sin_port = htons(server_port);
     // 向服务器发起连接,连接成功后socket代表了客户机和服务器的一个socket连接
     if(connect(socket, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0)
     {
         printf("Can not connect to %s! on port %d\n", server_ip, server_port);
-        exit(1);
+        perror("");
+        return -1;
     }
+    return 0;
 }
 
 void set_flag(int fd, int flags)
