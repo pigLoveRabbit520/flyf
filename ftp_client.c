@@ -217,9 +217,9 @@ int main(int argc, char **argv)
                         if (pre_len > 0) free(ptr);
                         ptr = tmp_ptr;
                     }
-                    char *tmp_ptr = (char *)calloc(data_len + 1, sizeof(char));
-                    g2u(ptr, data_len, tmp_ptr, data_len + 1);
-                    printf("%s\n", tmp_ptr);
+                    char *tmp_ptr = (char *)calloc(data_len * 2, sizeof(char));
+                    g2u(ptr, data_len, tmp_ptr, data_len * 2);
+                    printf("%s", tmp_ptr);
                     free(ptr);
                     free(tmp_ptr);
                     exit(0);
