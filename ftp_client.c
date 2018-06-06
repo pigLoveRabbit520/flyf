@@ -38,28 +38,9 @@ unsigned int cal_data_port(const char *recv_buffer);
 int get_client_data_socket(unsigned int client_cmd_port);
 int connect_server(int socket, const char *server_ip, unsigned int server_port);
 int get_respond(int client_socket, char* buffer, const char* server_ip);
+int code_convert(const char *from_charset, const char *to_charset, const char *inbuf, size_t inlen, char *outbuf, size_t outlen);
+int g2u(const char *inbuf, size_t inlen, char *outbuf, size_t outlen);
 
-int code_convert(const char *from_charset, const char *to_charset, char *inbuf, size_t inlen, char *outbuf, size_t outlen)  
-{
-    iconv_t cd;
-    int rc;  
-    char **pin = &inbuf;
-    char **pout = &outbuf;  
-    
-    cd = iconv_open(to_charset, from_charset);  
-    if (cd==0)  
-            return -1;
-    memset(outbuf, 0, outlen);  
-    if (iconv(cd, pin, &inlen, pout, &outlen) == -1)  
-            return -1;  
-    iconv_close(cd);
-    return 0;  
-}
-
-int g2u(char *inbuf, size_t inlen, char *outbuf, size_t outlen)  
-{
-    return code_convert("gb2312", "utf-8", inbuf, inlen, outbuf, outlen);  
-}
 
 bool is_connected(int socket_fd)
 {
@@ -208,6 +189,7 @@ int main(int argc, char **argv)
                     char data_buffer[BUFFER_SIZE];
                     char *ptr = "";
                     int data_len = 0;
+                    int pre_len = 0;
                     for (;;)
                     {
                         bzero(data_buffer, BUFFER_SIZE);
@@ -227,15 +209,17 @@ int main(int argc, char **argv)
                             printf("get data failed\n");
                             exit(1);
                         }
+                        pre_len = data_len;
                         data_len += length;
-                        char *tmp_ptr = (char *)calloc(data_len + 1, sizeof(char));
-                        sprintf(tmp_ptr, "%s%s", ptr, data_buffer);
-                        if (strlen(ptr) > 0) free(ptr);
+                        char *tmp_ptr = (char *)calloc(data_len, sizeof(char));
+                        memcpy(tmp_ptr, ptr, pre_len);
+                        memcpy(tmp_ptr + pre_len, data_buffer, length);
+                        if (pre_len > 0) free(ptr);
                         ptr = tmp_ptr;
                     }
                     char *tmp_ptr = (char *)calloc(data_len + 1, sizeof(char));
-                    g2u(ptr, strlen(ptr), tmp_ptr, data_len + 1);
-                    printf("%s\n", ptr);
+                    g2u(ptr, data_len, tmp_ptr, data_len + 1);
+                    printf("%s\n", tmp_ptr);
                     free(ptr);
                     free(tmp_ptr);
                     exit(0);
@@ -256,28 +240,6 @@ int main(int argc, char **argv)
             }
         }
     }
- 
-//     char file_name[FILE_NAME_MAX_SIZE+1];
-//     bzero(file_name, FILE_NAME_MAX_SIZE+1);
-//     printf("Please Input File Name On Server:\t");
-//     scanf("%s", file_name);
-     
-//     char buffer[BUFFER_SIZE];
-//     bzero(buffer,BUFFER_SIZE);
-//     strncpy(buffer, file_name, strlen(file_name)>BUFFER_SIZE?BUFFER_SIZE:strlen(file_name));
-//     //向服务器发送buffer中的数据
-//     send(client_socket, buffer, BUFFER_SIZE, 0);
- 
-// //    int fp = open(file_name, O_WRONLY|O_CREAT);
-// //    if( fp < 0 )
-//     FILE * fp = fopen(file_name,"w");
-//     if(NULL == fp )
-//     {
-//         printf("File:\t%s Can Not Open To Write\n", file_name);
-//         exit(1);
-//     }
-     
-
     //关闭socket
     close(client_socket);
     return 0;
@@ -403,6 +365,28 @@ int connect_server(int socket, const char *server_ip, unsigned int server_port)
         return -1;
     }
     return 0;
+}
+
+int code_convert(const char *from_charset, const char *to_charset, const char *inbuf, size_t inlen, char *outbuf, size_t outlen)
+{
+    iconv_t cd;
+    int rc;  
+    char **pin = &inbuf;
+    char **pout = &outbuf;  
+    
+    cd = iconv_open(to_charset, from_charset);  
+    if (cd==0)  
+            return -1;
+    memset(outbuf, 0, outlen);  
+    if (iconv(cd, pin, &inlen, pout, &outlen) == -1)  
+            return -1;  
+    iconv_close(cd);
+    return 0;  
+}
+
+int g2u(const char *inbuf, size_t inlen, char *outbuf, size_t outlen)
+{
+    return code_convert("gb2312", "utf-8", inbuf, inlen, outbuf, outlen);  
 }
 
 void set_flag(int fd, int flags)
