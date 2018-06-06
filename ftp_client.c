@@ -20,14 +20,6 @@ extern int errno;
 #define CMD_READ_BUFFER_SIZE 30
 #define FILE_NAME_MAX_SIZE 512
 
-#define ERR_EXIT(m) \
-    do\
-    {\
-        perror(m);\
-        exit(EXIT_FAILURE);\
-    }\
-    while (0)\
-
 unsigned int client_cmd_port = 0;
 ushort get_rand_port();
 void send_cmd(int client_socket, char* buffer);
@@ -38,22 +30,13 @@ unsigned int cal_data_port(const char *recv_buffer);
 int get_client_data_socket(unsigned int client_cmd_port);
 int connect_server(int socket, const char *server_ip, unsigned int server_port);
 int get_respond(int client_socket, char* buffer, const char* server_ip);
-int code_convert(const char *from_charset, const char *to_charset, const char *inbuf, size_t inlen, char *outbuf, size_t outlen);
-int g2u(const char *inbuf, size_t inlen, char *outbuf, size_t outlen);
-
-
-bool is_connected(int socket_fd)
-{
-    int error = 0;
-    socklen_t len = sizeof (error);
-    int retval = getsockopt (socket_fd, SOL_SOCKET, SO_ERROR, &error, &len);
-    if (retval != 0) return false;
-    if (error != 0) return false;
-    return true;
-}
+int code_convert(const char *from_charset, const char *to_charset, char *inbuf, size_t inlen, char *outbuf, size_t outlen);
+int g2u(char *inbuf, size_t inlen, char *outbuf, size_t outlen);
+bool is_connected(int socket_fd);
 
 void set_flag(int, int);
 void clr_flag(int, int);
+
 
 // 被动模式
 int main(int argc, char **argv)
@@ -367,7 +350,7 @@ int connect_server(int socket, const char *server_ip, unsigned int server_port)
     return 0;
 }
 
-int code_convert(const char *from_charset, const char *to_charset, const char *inbuf, size_t inlen, char *outbuf, size_t outlen)
+int code_convert(const char *from_charset, const char *to_charset, char *inbuf, size_t inlen, char *outbuf, size_t outlen)
 {
     iconv_t cd;
     int rc;  
@@ -384,9 +367,19 @@ int code_convert(const char *from_charset, const char *to_charset, const char *i
     return 0;  
 }
 
-int g2u(const char *inbuf, size_t inlen, char *outbuf, size_t outlen)
+int g2u(char *inbuf, size_t inlen, char *outbuf, size_t outlen)
 {
     return code_convert("gb2312", "utf-8", inbuf, inlen, outbuf, outlen);  
+}
+
+bool is_connected(int socket_fd)
+{
+    int error = 0;
+    socklen_t len = sizeof (error);
+    int retval = getsockopt (socket_fd, SOL_SOCKET, SO_ERROR, &error, &len);
+    if (retval != 0) return false;
+    if (error != 0) return false;
+    return true;
 }
 
 void set_flag(int fd, int flags)
