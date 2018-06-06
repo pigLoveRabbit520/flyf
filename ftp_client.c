@@ -214,8 +214,36 @@ int main(int argc, char **argv)
                     int status = 0;
                     waitpid(pid, &status, 0);
                 }
-            } else if (start_with(cmd_read, "exit"))
+            }
+            else if (start_with(cmd_read, "cd"))
             {
+                char *token;
+                const char delim[2] = " \t";
+                token = strtok(cmd_read, delim);
+                char *path = strtok(NULL, delim);
+                if (path == NULL)
+                {
+                    printf("please input the path\n");
+                    continue;
+                }
+                sprintf(send_buffer, "CWD %s\r\n", path);
+                send_cmd(client_socket, send_buffer);
+                 // 227
+                length = get_respond(client_socket, recv_buffer, argv[1]);
+                printf("%s", recv_buffer);   
+            }
+            else if (start_with(cmd_read, "pwd")) 
+            {
+                sprintf(send_buffer, "PWD\r\n");
+                send_cmd(client_socket, send_buffer);
+                 // 227
+                length = get_respond(client_socket, recv_buffer, argv[1]);
+                printf("%s", recv_buffer);
+            }
+            else if (start_with(cmd_read, "exit"))
+            {
+                sprintf(send_buffer, "QUIT\r\n");
+                send_cmd(client_socket, send_buffer);
                 printf("Goodbye!\n");
                 exit(0);
             }
@@ -318,6 +346,13 @@ int get_client_data_socket(unsigned int client_cmd_port)
     if(client_data_socket < 0)
     {
         perror("Create client data socket failed!\n");
+    }
+    // 端口复用
+    int opt = 1;
+    if (setsockopt(client_data_socket, SOL_SOCKET,SO_REUSEADDR, &opt, sizeof(opt)))
+    {
+        perror("setsockopt failed");
+        return -1; 
     }
     if(bind(client_data_socket, (struct sockaddr*)&client_addr, sizeof(client_addr)))
     {
