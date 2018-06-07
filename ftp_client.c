@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #include <pwd.h>
 #include <errno.h>
+#include <arpa/inet.h>
 #include "encode.h"
 
 extern int errno;
@@ -408,11 +409,11 @@ int get_client_data_socket(unsigned int client_cmd_port)
     return client_data_socket;
 }
 
-bool check_server_ip(const char *server_ip)
+bool check_server_ip(const char *ip_addr)
 {
-    struct sockaddr_in server_addr;
-    bzero(&server_addr, sizeof(server_addr));
-    return inet_aton(server_ip, &server_addr.sin_addr) != 0;
+    struct sockaddr_in addr;
+    bzero(&addr, sizeof(addr));
+    return inet_pton(AF_INET, ip_addr, &(addr.sin_addr)) != 0;
 }
 
 int connect_server(int socket, const char *server_ip, unsigned int server_port)
