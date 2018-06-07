@@ -15,6 +15,7 @@
 
 extern int errno;
 
+
 #define FTP_SERVER_PORT 21 
 #define BUFFER_SIZE 1024
 #define CMD_READ_BUFFER_SIZE 30
@@ -29,8 +30,20 @@ bool is_correct_respond(const char *respond, int code); // 是否返回正确响
 unsigned int cal_data_port(const char *recv_buffer);
 int get_client_data_socket(unsigned int client_cmd_port);
 int connect_server(int socket, const char *server_ip, unsigned int server_port);
-int get_respond(int client_socket, char* buffer, const char* server_ip);
+int get_respond(int client_socket, char* buffer);
 bool is_connected(int socket_fd);
+bool check_server_ip(const char *server_ip);
+
+int set_keepalive(int socket)
+{
+    int optval = 1;
+    if(setsockopt(socket, SOL_SOCKET, SO_KEEPALIVE, &optval, sizeof(optval)) < 0) {
+       perror("setsockopt()");
+       close(socket);
+       return -1;
+    }
+    return 0;
+}
 
 void set_flag(int, int);
 void clr_flag(int, int);
@@ -44,7 +57,13 @@ int main(int argc, char **argv)
         printf("Usage: ./%s ServerIPAddress\n", argv[0]);
         exit(1);
     }
- 
+    // 检查ip合法
+    if (!check_server_ip(argv[1]))
+    {
+        perror("Server IP address error!\n");
+        exit(1);
+    }
+    char *server_ip = argv[1];
     // 设置一个socket地址结构client_addr,代表客户机internet地址, 端口
     struct sockaddr_in client_addr;
     bzero(&client_addr, sizeof(client_addr)); // 把一段内存区的内容全部设置为0
@@ -64,26 +83,33 @@ int main(int argc, char **argv)
         printf("client bind port failed!\n"); 
         exit(1);
     }
-    int res = connect_server(client_socket, argv[1], FTP_SERVER_PORT);
+    int res = connect_server(client_socket, server_ip, FTP_SERVER_PORT);
     if (res < 0)
     {
         exit(1);
     }
-
+    set_keepalive(client_socket);
     char recv_buffer[BUFFER_SIZE];
     char send_buffer[BUFFER_SIZE];
     bzero(recv_buffer, BUFFER_SIZE);
     bzero(send_buffer, BUFFER_SIZE);
+
+
     int length = 0;
     // 接受欢迎命令
-    length = get_respond(client_socket, recv_buffer, argv[1]);
+    length = get_respond(client_socket, recv_buffer);
+    if (length < 0)
+    {
+        printf("Recieve data from server %s failed!\n", server_ip);
+        exit(1);
+    }
 	printf("%s", recv_buffer);
 
     char cmd_read[CMD_READ_BUFFER_SIZE];
     struct passwd *pws;
     pws = getpwuid(geteuid());
     // 输入用户名
-    printf("Name(%s:%s):", argv[1], pws->pw_name);
+    printf("Name(%s:%s):", server_ip, pws->pw_name);
     if (fgets_wrapper(cmd_read, CMD_READ_BUFFER_SIZE, stdin) == 0) 
     {
         printf("read name failed\n");
@@ -94,7 +120,12 @@ int main(int argc, char **argv)
     send_cmd(client_socket, send_buffer);
 
     // 331
-    length = get_respond(client_socket, recv_buffer, argv[1]);
+    length = get_respond(client_socket, recv_buffer);
+    if (length < 0)
+    {
+        printf("Recieve data from server %s failed!\n", server_ip);
+        exit(1);
+    }
     printf("%s", recv_buffer);
     if (!is_correct_respond(recv_buffer, 331))
     {
@@ -113,7 +144,12 @@ int main(int argc, char **argv)
     send_cmd(client_socket, send_buffer);
 
     // 230
-    length = get_respond(client_socket, recv_buffer, argv[1]);
+    length = get_respond(client_socket, recv_buffer);
+    if (length < 0)
+    {
+        printf("Recieve data from server %s failed!\n", server_ip);
+        exit(1);
+    }
     printf("%s", recv_buffer);
     if (!is_correct_respond(recv_buffer, 230))
     {
@@ -136,7 +172,12 @@ int main(int argc, char **argv)
                 sprintf(send_buffer, "PASV\r\n");
                 send_cmd(client_socket, send_buffer);
                  // 227
-                length = get_respond(client_socket, recv_buffer, argv[1]);
+                length = get_respond(client_socket, recv_buffer);
+                if (length < 0)
+                {
+                    printf("Recieve data from server %s failed!\n", server_ip);
+                    continue;
+                }
                 if (!is_correct_respond(recv_buffer, 227))
                 {
                     printf("%s\n", recv_buffer);
@@ -144,7 +185,7 @@ int main(int argc, char **argv)
                     continue;
                 }
                 unsigned int server_data_port = cal_data_port(recv_buffer); // 计算数据端口
-                int res = connect_server(client_data_socket, argv[1], server_data_port);
+                int res = connect_server(client_data_socket, server_ip, server_data_port);
                 if (res < 0) {
                     close(client_data_socket);
                     continue;
@@ -154,7 +195,12 @@ int main(int argc, char **argv)
                 send_cmd(client_socket, send_buffer);
 
                 // 125开始传输 226表明完成
-                length = get_respond(client_socket, recv_buffer, argv[1]);
+                length = get_respond(client_socket, recv_buffer);
+                if (length < 0)
+                {
+                    printf("Recieve data from server %s failed!\n", server_ip);
+                    continue;
+                }
                 if (!is_correct_respond(recv_buffer, 125))
                 {
                     printf("LIST start failed\n");
@@ -206,7 +252,12 @@ int main(int argc, char **argv)
                     free(tmp_ptr);
                     exit(0);
                 } else {
-                    length = get_respond(client_socket, recv_buffer, argv[1]);
+                    length = get_respond(client_socket, recv_buffer);
+                    if (length < 0)
+                    {
+                        printf("Recieve data from server %s failed!\n", server_ip);
+                        continue;
+                    }
                     if (!is_correct_respond(recv_buffer, 226))
                     {
                         printf("LIST end failed\n");
@@ -230,7 +281,7 @@ int main(int argc, char **argv)
                 sprintf(send_buffer, "CWD %s\r\n", path);
                 send_cmd(client_socket, send_buffer);
                  // 227
-                length = get_respond(client_socket, recv_buffer, argv[1]);
+                length = get_respond(client_socket, recv_buffer);
                 printf("%s", recv_buffer);   
             }
             else if (start_with(cmd_read, "pwd")) 
@@ -238,7 +289,7 @@ int main(int argc, char **argv)
                 sprintf(send_buffer, "PWD\r\n");
                 send_cmd(client_socket, send_buffer);
                  // 227
-                length = get_respond(client_socket, recv_buffer, argv[1]);
+                length = get_respond(client_socket, recv_buffer);
                 printf("%s", recv_buffer);
             }
             else if (start_with(cmd_read, "exit"))
@@ -269,17 +320,11 @@ void send_cmd(int client_socket, char* buffer)
     bzero(buffer, BUFFER_SIZE);
 }
 
-int get_respond(int client_socket, char* buffer, const char* server_ip)
+int get_respond(int client_socket, char* buffer)
 {
     bzero(buffer, BUFFER_SIZE);
     int length = 0;
-    // 接受欢迎命令
     length = recv(client_socket, buffer, BUFFER_SIZE, 0);
-    if(length < 0)
-    {
-        printf("Recieve data from server %s failed!\n", server_ip);
-        exit(1);
-    }
     return length;
 }
 
@@ -363,16 +408,19 @@ int get_client_data_socket(unsigned int client_cmd_port)
     return client_data_socket;
 }
 
+bool check_server_ip(const char *server_ip)
+{
+    struct sockaddr_in server_addr;
+    bzero(&server_addr, sizeof(server_addr));
+    return inet_aton(server_ip, &server_addr.sin_addr) != 0;
+}
+
 int connect_server(int socket, const char *server_ip, unsigned int server_port)
 {
     struct sockaddr_in server_addr;
     bzero(&server_addr, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
-    if(inet_aton(server_ip, &server_addr.sin_addr) == 0) // 服务器的IP地址来自程序的参数
-    {
-        perror("Server IP address error!\n");
-        return -1;
-    }
+    inet_aton(server_ip, &server_addr.sin_addr);
     server_addr.sin_port = htons(server_port);
     // 向服务器发起连接,连接成功后socket代表了客户机和服务器的一个socket连接
     if(connect(socket, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0)
