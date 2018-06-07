@@ -139,7 +139,8 @@ int main(int argc, char **argv)
                 length = get_respond(client_socket, recv_buffer, argv[1]);
                 if (!is_correct_respond(recv_buffer, 227))
                 {
-                    printf("enter passive mode failed\n");
+                    printf("%s\n", recv_buffer);
+                    close(client_data_socket);
                     continue;
                 }
                 unsigned int server_data_port = cal_data_port(recv_buffer); // 计算数据端口
