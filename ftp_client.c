@@ -168,6 +168,19 @@ int main(int argc, char **argv)
             if(!cmd)
                 continue;
             //printcommand(cmd);
+            timeval outTime;
+            outTime.tv = 1;
+            outTime.usec = 0;
+            fd_set readset;
+
+            FD_ZERO(&readset);
+            FD_SET(client_socket, &readset);
+
+            if (select(client_socket + 1, &readset, NULL, NULL, &outTime) <= 0)
+            {
+                printf("server connection is closed.\n");
+            }
+
             switch(cmd->id)
             {
                 case LS:
