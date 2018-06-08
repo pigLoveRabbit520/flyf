@@ -323,7 +323,7 @@ ushort get_rand_port()
 
 void send_cmd(int client_socket, char* buffer)
 {
-    send(client_socket, buffer, BUFFER_SIZE, 0);
+    send(client_socket, buffer, strlen(buffer), 0);
     bzero(buffer, BUFFER_SIZE);
 }
 
