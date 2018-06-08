@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <arpa/inet.h>
 #include "encode.h"
+#include "common.h"
 
 extern int errno;
 
@@ -157,160 +158,173 @@ int main(int argc, char **argv)
         exit(1);
     }
 
+    struct command* cmd;
     for (;;)
     {
         printf("FTP>");
         if (fgets_wrapper(cmd_read, CMD_READ_BUFFER_SIZE, stdin) != 0)
         {
-            if (start_with(cmd_read, "ls"))
+            cmd = userinputtocommand(cmd_read);
+            if(!cmd)
+                continue;
+            switch(cmd->id)
             {
-                // 被动模式
-                int client_data_socket = get_client_data_socket(client_cmd_port);
-                if (client_data_socket < 0)
+                case LS:
                 {
-                    continue;
-                }
-                sprintf(send_buffer, "PASV\r\n");
-                send_cmd(client_socket, send_buffer);
-                 // 227
-                length = get_respond(client_socket, recv_buffer);
-                if (length < 0)
-                {
-                    printf("Recieve data from server %s failed!\n", server_ip);
-                    continue;
-                }
-                if (!respond_with_code(recv_buffer, 227))
-                {
-                    printf("%s\n", recv_buffer);
-                    close(client_data_socket);
-                    continue;
-                }
-                unsigned int server_data_port = cal_data_port(recv_buffer); // 计算数据端口
-                int res = connect_server(client_data_socket, server_ip, server_data_port);
-                if (res < 0) {
-                    close(client_data_socket);
-                    continue;
-                }
-
-                sprintf(send_buffer, "LIST %s\r\n", "");
-                send_cmd(client_socket, send_buffer);
-
-                // 125打开数据连接，开始传输 226表明完成
-                // 150打开连接
-                // linux vsftpd 发送150 Here comes the directory listing
-                length = get_respond(client_socket, recv_buffer);
-                if (length < 0)
-                {
-                    printf("Recieve data from server %s failed!\n", server_ip);
-                    continue;
-                }
-                if (!respond_with_code(recv_buffer, 125) && !respond_with_code(recv_buffer, 150))
-                {
-                    printf("%s\n", recv_buffer);
-                    continue;
-                }
-                // 非阻塞
-                set_flag(client_data_socket, O_NONBLOCK);
-
-                pid_t pid;
-                if ((pid = fork()) < 0) {
-                    printf("fork error");
-                    continue;
-                } else if (pid == 0) {
-                    char data_buffer[BUFFER_SIZE];
-                    char *ptr = "";
-                    int data_len = 0;
-                    int pre_len = 0;
-                    for (;;)
+                    // 被动模式
+                    int client_data_socket = get_client_data_socket(client_cmd_port);
+                    if (client_data_socket < 0)
                     {
-                        bzero(data_buffer, BUFFER_SIZE);
-                        int length = recv(client_data_socket, data_buffer, BUFFER_SIZE, 0);
-                        if (length == 0)
-                        {
-                            close(client_data_socket);
-                            break;
-                        }
-                        else if (length < 0)
-                        {
-                            if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)
-                            {
-                                continue;
-                            }
-                            close(client_data_socket);
-                            printf("get data failed\n");
-                            exit(1);
-                        }
-                        pre_len = data_len;
-                        data_len += length;
-                        char *tmp_ptr = (char *)calloc(data_len, sizeof(char));
-                        memcpy(tmp_ptr, ptr, pre_len);
-                        memcpy(tmp_ptr + pre_len, data_buffer, length);
-                        if (pre_len > 0) free(ptr);
-                        ptr = tmp_ptr;
+                        continue;
                     }
-                    char *tmp_ptr = (char *)calloc(data_len * 2, sizeof(char));
-                    g2u(ptr, data_len, tmp_ptr, data_len * 2);
-                    printf("%s", tmp_ptr);
-                    // 要接收目录列表是否为空
-                    if (data_len > 0)
-                    {
-                        free(ptr);
-                        free(tmp_ptr);
-                    }
-                    exit(0);
-                } else {
+                    sprintf(send_buffer, "PASV\r\n");
+                    send_cmd(client_socket, send_buffer);
+                     // 227
                     length = get_respond(client_socket, recv_buffer);
                     if (length < 0)
                     {
                         printf("Recieve data from server %s failed!\n", server_ip);
                         continue;
                     }
-                    if (!respond_with_code(recv_buffer, 226))
+                    if (!respond_with_code(recv_buffer, 227))
                     {
-                        printf("LIST end failed\n");
+                        printf("%s\n", recv_buffer);
+                        close(client_data_socket);
                         continue;
                     }
-                    int status = 0;
-                    waitpid(pid, &status, 0);
+                    unsigned int server_data_port = cal_data_port(recv_buffer); // 计算数据端口
+                    int res = connect_server(client_data_socket, server_ip, server_data_port);
+                    if (res < 0) {
+                        close(client_data_socket);
+                        continue;
+                    }
+
+                    sprintf(send_buffer, "LIST %s\r\n", "");
+                    send_cmd(client_socket, send_buffer);
+
+                    // 125打开数据连接，开始传输 226表明完成
+                    // 150打开连接
+                    // linux vsftpd 发送150 Here comes the directory listing
+                    length = get_respond(client_socket, recv_buffer);
+                    if (length < 0)
+                    {
+                        printf("Recieve data from server %s failed!\n", server_ip);
+                        continue;
+                    }
+                    if (!respond_with_code(recv_buffer, 125) && !respond_with_code(recv_buffer, 150))
+                    {
+                        printf("%s\n", recv_buffer);
+                        continue;
+                    }
+                    // 非阻塞
+                    set_flag(client_data_socket, O_NONBLOCK);
+
+                    pid_t pid;
+                    if ((pid = fork()) < 0) {
+                        printf("fork error");
+                        continue;
+                    } else if (pid == 0) {
+                        char data_buffer[BUFFER_SIZE];
+                        char *ptr = "";
+                        int data_len = 0;
+                        int pre_len = 0;
+                        for (;;)
+                        {
+                            bzero(data_buffer, BUFFER_SIZE);
+                            int length = recv(client_data_socket, data_buffer, BUFFER_SIZE, 0);
+                            if (length == 0)
+                            {
+                                close(client_data_socket);
+                                break;
+                            }
+                            else if (length < 0)
+                            {
+                                if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)
+                                {
+                                    continue;
+                                }
+                                close(client_data_socket);
+                                printf("get data failed\n");
+                                exit(1);
+                            }
+                            pre_len = data_len;
+                            data_len += length;
+                            char *tmp_ptr = (char *)calloc(data_len, sizeof(char));
+                            memcpy(tmp_ptr, ptr, pre_len);
+                            memcpy(tmp_ptr + pre_len, data_buffer, length);
+                            if (pre_len > 0) free(ptr);
+                            ptr = tmp_ptr;
+                        }
+                        char *tmp_ptr = (char *)calloc(data_len * 2, sizeof(char));
+                        g2u(ptr, data_len, tmp_ptr, data_len * 2);
+                        printf("%s", tmp_ptr);
+                        // 要接收目录列表是否为空
+                        if (data_len > 0)
+                        {
+                            free(ptr);
+                            free(tmp_ptr);
+                        }
+                        exit(0);
+                    } else {
+                        length = get_respond(client_socket, recv_buffer);
+                        if (length < 0)
+                        {
+                            printf("Recieve data from server %s failed!\n", server_ip);
+                            continue;
+                        }
+                        if (!respond_with_code(recv_buffer, 226))
+                        {
+                            printf("LIST end failed\n");
+                            continue;
+                        }
+                        int status = 0;
+                        waitpid(pid, &status, 0);
+                    }
                 }
-            }
-            else if (start_with(cmd_read, "cd"))
-            {
-                char *token;
-                const char delim[2] = " \t";
-                token = strtok(cmd_read, delim);
-                char *path = strtok(NULL, delim);
-                if (path == NULL)
+                break;
+
+                case CD:
                 {
-                    printf("please input the path\n");
-                    continue;
+                    char *token;
+                    const char delim[2] = " \t";
+                    token = strtok(cmd_read, delim);
+                    char *path = strtok(NULL, delim);
+                    if (path == NULL)
+                    {
+                        printf("please input the path\n");
+                        continue;
+                    }
+                    sprintf(send_buffer, "CWD %s\r\n", path);
+                    send_cmd(client_socket, send_buffer);
+                    // 250 success
+                    length = get_respond(client_socket, recv_buffer);
+                    printf("%s", recv_buffer);
+                    if (respond_with_code(recv_buffer, 550))
+                    {
+                        // 再接收一次数据，windows FTP server 550问题
+                        get_respond(client_socket, recv_buffer);
+                        printf("%s", recv_buffer);
+                    }
                 }
-                sprintf(send_buffer, "CWD %s\r\n", path);
-                send_cmd(client_socket, send_buffer);
-                // 250 success
-                length = get_respond(client_socket, recv_buffer);
-                printf("%s", recv_buffer);
-                if (respond_with_code(recv_buffer, 550))
+                break;
+
+                case PWD:
                 {
-                    // 再接收一次数据，windows FTP server 550问题
-                    get_respond(client_socket, recv_buffer);
+                    sprintf(send_buffer, "PWD\r\n");
+                    send_cmd(client_socket, send_buffer);
+                     // 227
+                    length = get_respond(client_socket, recv_buffer);
                     printf("%s", recv_buffer);
                 }
-            }
-            else if (start_with(cmd_read, "pwd")) 
-            {
-                sprintf(send_buffer, "PWD\r\n");
-                send_cmd(client_socket, send_buffer);
-                 // 227
-                length = get_respond(client_socket, recv_buffer);
-                printf("%s", recv_buffer);
-            }
-            else if (start_with(cmd_read, "exit"))
-            {
-                sprintf(send_buffer, "QUIT\r\n");
-                send_cmd(client_socket, send_buffer);
-                printf("Goodbye!\n");
-                exit(0);
+                break;
+                case EXIT:
+                {
+                    sprintf(send_buffer, "QUIT\r\n");
+                    send_cmd(client_socket, send_buffer);
+                    printf("Goodbye!\n");
+                    exit(0);
+                }
+                break;
             }
         }
     }
