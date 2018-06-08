@@ -167,6 +167,7 @@ int main(int argc, char **argv)
             cmd = userinputtocommand(cmd_read);
             if(!cmd)
                 continue;
+            //printcommand(cmd);
             switch(cmd->id)
             {
                 case LS:
@@ -286,15 +287,12 @@ int main(int argc, char **argv)
                 case CD:
                 {
                     char *token;
-                    const char delim[2] = " \t";
-                    token = strtok(cmd_read, delim);
-                    char *path = strtok(NULL, delim);
-                    if (path == NULL)
+                    if (!cmd->paths)
                     {
                         printf("please input the path\n");
                         continue;
                     }
-                    sprintf(send_buffer, "CWD %s\r\n", path);
+                    sprintf(send_buffer, "CWD %s\r\n", cmd->paths[0]);
                     send_cmd(client_socket, send_buffer);
                     // 250 success
                     length = get_respond(client_socket, recv_buffer);

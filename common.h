@@ -135,6 +135,7 @@ struct packet* htonp(struct packet*);
 
 void printpacket(struct packet*, int);
 struct command* userinputtocommand(char [LENUSERINPUT]);
+void printcommand(struct command* c);
 
 
 #define NCOMMANDS 19
