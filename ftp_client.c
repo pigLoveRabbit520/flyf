@@ -281,9 +281,15 @@ int main(int argc, char **argv)
                 }
                 sprintf(send_buffer, "CWD %s\r\n", path);
                 send_cmd(client_socket, send_buffer);
-                 // 227
+                // 250 success
                 length = get_respond(client_socket, recv_buffer);
-                printf("%s", recv_buffer);   
+                printf("%s", recv_buffer);
+                if (!is_correct_respond(recv_buffer, 250))
+                {
+                    // 再接收一次数据，windows FTP server问题
+                    get_respond(client_socket, recv_buffer);
+                    printf("%s", recv_buffer);
+                }
             }
             else if (start_with(cmd_read, "pwd")) 
             {
