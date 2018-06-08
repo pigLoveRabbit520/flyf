@@ -195,16 +195,18 @@ int main(int argc, char **argv)
                 sprintf(send_buffer, "LIST %s\r\n", "");
                 send_cmd(client_socket, send_buffer);
 
-                // 125开始传输 226表明完成
+                // 125打开数据连接，开始传输 226表明完成
+                // 150打开连接
+                // linux vsftpd 发送150 Here comes the directory listing
                 length = get_respond(client_socket, recv_buffer);
                 if (length < 0)
                 {
                     printf("Recieve data from server %s failed!\n", server_ip);
                     continue;
                 }
-                if (!respond_with_code(recv_buffer, 125))
+                if (!respond_with_code(recv_buffer, 125) && !respond_with_code(recv_buffer, 150))
                 {
-                    printf("LIST start failed\n");
+                    printf("%s\n", recv_buffer);
                     continue;
                 }
                 // 非阻塞
@@ -249,8 +251,12 @@ int main(int argc, char **argv)
                     char *tmp_ptr = (char *)calloc(data_len * 2, sizeof(char));
                     g2u(ptr, data_len, tmp_ptr, data_len * 2);
                     printf("%s", tmp_ptr);
-                    free(ptr);
-                    free(tmp_ptr);
+                    // 要接收目录列表是否为空
+                    if (data_len > 0)
+                    {
+                        free(ptr);
+                        free(tmp_ptr);
+                    }
                     exit(0);
                 } else {
                     length = get_respond(client_socket, recv_buffer);
