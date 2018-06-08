@@ -27,7 +27,7 @@ ushort get_rand_port();
 void send_cmd(int client_socket, char* buffer);
 bool start_with(const char *pre, const char *str);
 char *fgets_wrapper(char *buffer, size_t buflen, FILE *fp);
-bool is_correct_respond(const char *respond, int code); // 是否返回正确响应码
+bool respond_with_code(const char *respond, int code); // 是否返回正确响应码
 unsigned int cal_data_port(const char *recv_buffer);
 int get_client_data_socket(unsigned int client_cmd_port);
 int connect_server(int socket, const char *server_ip, unsigned int server_port);
@@ -128,7 +128,7 @@ int main(int argc, char **argv)
         exit(1);
     }
     printf("%s", recv_buffer);
-    if (!is_correct_respond(recv_buffer, 331))
+    if (!respond_with_code(recv_buffer, 331))
     {
         exit(1);
     }
@@ -152,7 +152,7 @@ int main(int argc, char **argv)
         exit(1);
     }
     printf("%s", recv_buffer);
-    if (!is_correct_respond(recv_buffer, 230))
+    if (!respond_with_code(recv_buffer, 230))
     {
         exit(1);
     }
@@ -179,7 +179,7 @@ int main(int argc, char **argv)
                     printf("Recieve data from server %s failed!\n", server_ip);
                     continue;
                 }
-                if (!is_correct_respond(recv_buffer, 227))
+                if (!respond_with_code(recv_buffer, 227))
                 {
                     printf("%s\n", recv_buffer);
                     close(client_data_socket);
@@ -202,7 +202,7 @@ int main(int argc, char **argv)
                     printf("Recieve data from server %s failed!\n", server_ip);
                     continue;
                 }
-                if (!is_correct_respond(recv_buffer, 125))
+                if (!respond_with_code(recv_buffer, 125))
                 {
                     printf("LIST start failed\n");
                     continue;
@@ -259,7 +259,7 @@ int main(int argc, char **argv)
                         printf("Recieve data from server %s failed!\n", server_ip);
                         continue;
                     }
-                    if (!is_correct_respond(recv_buffer, 226))
+                    if (!respond_with_code(recv_buffer, 226))
                     {
                         printf("LIST end failed\n");
                         continue;
@@ -284,9 +284,9 @@ int main(int argc, char **argv)
                 // 250 success
                 length = get_respond(client_socket, recv_buffer);
                 printf("%s", recv_buffer);
-                if (!is_correct_respond(recv_buffer, 250))
+                if (respond_with_code(recv_buffer, 550))
                 {
-                    // 再接收一次数据，windows FTP server问题
+                    // 再接收一次数据，windows FTP server 550问题
                     get_respond(client_socket, recv_buffer);
                     printf("%s", recv_buffer);
                 }
@@ -354,7 +354,7 @@ bool start_with(const char *str, const char *pre)
     return lenstr < lenpre ? false : strncmp(pre, str, lenpre) == 0;
 }
 
-bool is_correct_respond(const char *respond, int code)
+bool respond_with_code(const char *respond, int code)
 {
     char code_str[4];
     sprintf(code_str, "%d", code);
