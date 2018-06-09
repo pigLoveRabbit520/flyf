@@ -146,15 +146,10 @@ int main(int argc, char **argv)
 
     bzero(cmd_read, CMD_READ_BUFFER_SIZE);
     // 输入密码
-    printf("Password:");
-    if (fgets_wrapper(cmd_read, CMD_READ_BUFFER_SIZE, stdin) == 0) 
-    {
-        printf("read password failed\n");
-        exit(1);
-    }
-    sprintf(send_buffer,"PASS %s\r\n", cmd_read);
+    char *passwd = getpass("Password:");
+    sprintf(send_buffer,"PASS %s\r\n", passwd);
     send_cmd(client_socket, send_buffer);
-
+    
     // 230
     length = get_respond(client_socket, recv_buffer);
     if (length < 0)

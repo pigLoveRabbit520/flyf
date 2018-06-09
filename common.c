@@ -28,7 +28,7 @@ static const char commandlist[NCOMMANDS][10] =
 		
 		"pwd",
 		"lpwd",
-		
+		"open",
 		"exit"
 	};
 

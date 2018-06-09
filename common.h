@@ -138,7 +138,7 @@ struct command* userinputtocommand(char [LENUSERINPUT]);
 void printcommand(struct command* c);
 
 
-#define NCOMMANDS 19
+#define NCOMMANDS 20
 enum COMMAND
 	{
 		GET,
@@ -159,6 +159,7 @@ enum COMMAND
 		RPUT,
 		PWD,
 		LPWD,
+		OPEN,
 		EXIT
 	};
 
