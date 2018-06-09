@@ -35,6 +35,8 @@ int connect_server(int socket, const char *server_ip, unsigned int server_port);
 int get_respond(int client_socket, char* buffer);
 bool is_connected(int socket_fd);
 bool check_server_ip(const char *server_ip);
+void set_flag(int, int);
+void clr_flag(int, int);
 
 int set_keepalive(int socket)
 {
@@ -47,21 +49,16 @@ int set_keepalive(int socket)
     return 0;
 }
 
-// 利用select判断socket是否可读
-bool is_server_connected(int client_socket)
+// server端是否断开连接
+bool is_server_disconnected(int client_socket)
 {
-    struct timeval timeout = {0, 0};
-    fd_set readset;
-
-    FD_ZERO(&readset);
-    FD_SET(client_socket, &readset);
-    int ret;
-    ret = select(client_socket + 1, &readset, NULL, NULL, &timeout);
-    return ret >= 0;
+    // 非阻塞
+    set_flag(client_socket, O_NONBLOCK);
+    char buffer[10];
+    int length = recv(client_socket, buffer, 10, 0);
+    clr_flag(client_socket, O_NONBLOCK);
+    return length == 0;
 }
-
-void set_flag(int, int);
-void clr_flag(int, int);
 
 
 // 被动模式
@@ -103,12 +100,12 @@ int main(int argc, char **argv)
     {
         exit(1);
     }
-    set_keepalive(client_socket);
+    //set_keepalive(client_socket);
     char recv_buffer[BUFFER_SIZE];
     char send_buffer[BUFFER_SIZE];
     bzero(recv_buffer, BUFFER_SIZE);
     bzero(send_buffer, BUFFER_SIZE);
-
+    signal(SIGPIPE, SIG_IGN);
 
     int length = 0;
     // 接受欢迎命令
@@ -180,7 +177,7 @@ int main(int argc, char **argv)
             cmd = userinputtocommand(cmd_read);
             if(!cmd)
                 continue;
-            if (!is_connected(client_socket))
+            if (is_server_disconnected(client_socket))
             {
                 close(client_socket);
                 printf("server connection is closed\n");
@@ -495,4 +492,15 @@ void set_flag(int fd, int flags)
     val |= flags;
     if (fcntl(fd, F_SETFL, val) < 0)
         printf("fcntl set flag error");
+}
+
+void clr_flag(int fd, int flags)
+{
+    int val;
+    val = fcntl(fd, F_GETFL, 0);
+    if (val == -1)
+        printf("fcntl get flag error");
+    val &= ~flags;
+    if (fcntl(fd, F_SETFL, val) < 0)
+        printf("fcntl clear flag error");
 }
