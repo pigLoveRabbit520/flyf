@@ -47,6 +47,19 @@ int set_keepalive(int socket)
     return 0;
 }
 
+// 利用select判断socket是否可读
+bool is_server_connected(int client_socket)
+{
+    struct timeval timeout = {0, 0};
+    fd_set readset;
+
+    FD_ZERO(&readset);
+    FD_SET(client_socket, &readset);
+    int ret;
+    ret = select(client_socket + 1, &readset, NULL, NULL, &timeout);
+    return ret >= 0;
+}
+
 void set_flag(int, int);
 void clr_flag(int, int);
 
@@ -167,20 +180,13 @@ int main(int argc, char **argv)
             cmd = userinputtocommand(cmd_read);
             if(!cmd)
                 continue;
-            //printcommand(cmd);
-            timeval outTime;
-            outTime.tv = 1;
-            outTime.usec = 0;
-            fd_set readset;
-
-            FD_ZERO(&readset);
-            FD_SET(client_socket, &readset);
-
-            if (select(client_socket + 1, &readset, NULL, NULL, &outTime) <= 0)
+            if (!is_connected(client_socket))
             {
-                printf("server connection is closed.\n");
+                close(client_socket);
+                printf("server connection is closed\n");
+                continue;
             }
-
+            //printcommand(cmd);
             switch(cmd->id)
             {
                 case LS:
