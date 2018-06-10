@@ -159,7 +159,7 @@ int main(int argc, char **argv)
             cmd = userinputtocommand(cmd_read);
             if(!cmd)
                 continue;
-            if (!server_connected && cmd->id != OPEN)
+            if (!server_connected && cmd->id != OPEN && cmd->id != EXIT)
             {
                 printf("not connected\n");
                 continue;
@@ -171,7 +171,7 @@ int main(int argc, char **argv)
                 printf("server connection is closed\n");
                 continue;
             }
-            printcommand(cmd);
+            //printcommand(cmd);
             switch(cmd->id)
             {
                 case LS:
