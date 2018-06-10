@@ -5,6 +5,7 @@
 * ls
 * pwd
 * cd
+* open
 * exit
 
 # 编译
