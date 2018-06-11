@@ -28,14 +28,18 @@ int main(int argc, char **argv)
     bzero(send_buffer, BUFFER_SIZE);
     signal(SIGPIPE, SIG_IGN);
 
-    int res = user_login(client_cmd_socket, recv_buffer, send_buffer);
-    if (res == ERR_DISCONNECTED)
+    for (;;)
     {
-        close(client_cmd_socket);
-        exit(1);
-    } else if (res == ERR_READ_FAILED || res == ERR_INCORRECT_CODE)
-    {
-        printf("try login again: please use [open] command\n");
+        int res = user_login(client_cmd_socket, recv_buffer, send_buffer);
+        if (res == ERR_DISCONNECTED)
+        {
+            close(client_cmd_socket);
+            exit(1);
+        } else if (res == ERR_READ_FAILED || res == ERR_INCORRECT_CODE)
+        {
+            printf("login failed\n");
+        } else
+            break;
     }
 
     struct command* cmd;
@@ -196,7 +200,6 @@ int main(int argc, char **argv)
                     }
                 }
                 break;
-
                 case PWD:
                 {
                     sprintf(send_buffer, "PWD\r\n");
@@ -222,6 +225,25 @@ int main(int argc, char **argv)
                      // 227
                     length = get_respond(client_cmd_socket, recv_buffer);
                     printf("%s", recv_buffer);
+                }
+                break;
+                case DELETE:
+                {
+                    if (!cmd->paths)
+                    {
+                        printf("please select the file\n");
+                        continue;
+                    }
+                    sprintf(send_buffer, "DELE %s\r\n", cmd->paths[0]);
+                    send_cmd(client_cmd_socket, send_buffer);
+                    length = get_respond(client_cmd_socket, recv_buffer);
+                    printf("%s", recv_buffer);
+                    if (respond_with_code(recv_buffer, 550))
+                    {
+                        // 再接收一次数据，windows FTP server 550问题
+                        get_respond(client_cmd_socket, recv_buffer);
+                        printf("%s", recv_buffer);
+                    }
                 }
                 break;
                 case OPEN:
