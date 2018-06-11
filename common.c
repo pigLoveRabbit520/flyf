@@ -7,6 +7,7 @@ static const char commandlist[NCOMMANDS][10] =
 
 		"mget",
 		"mput",
+		"delete",
 		
 		"cd",
 		"lcd",
@@ -28,7 +29,10 @@ static const char commandlist[NCOMMANDS][10] =
 		
 		"pwd",
 		"lpwd",
+		"ascii",
+		"binary",
 		"open",
+		"quit",
 		"exit"
 	};
 

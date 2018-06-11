@@ -206,6 +206,24 @@ int main(int argc, char **argv)
                     printf("%s", recv_buffer);
                 }
                 break;
+                case ASCII:
+                {
+                    sprintf(send_buffer, "TYPE A\r\n");
+                    send_cmd(client_cmd_socket, send_buffer);
+                     // 227
+                    length = get_respond(client_cmd_socket, recv_buffer);
+                    printf("%s", recv_buffer);
+                }
+                break;
+                case BINARY:
+                {
+                    sprintf(send_buffer, "TYPE I\r\n");
+                    send_cmd(client_cmd_socket, send_buffer);
+                     // 227
+                    length = get_respond(client_cmd_socket, recv_buffer);
+                    printf("%s", recv_buffer);
+                }
+                break;
                 case OPEN:
                 {
                     if (!cmd->paths)
@@ -230,6 +248,7 @@ int main(int argc, char **argv)
                     }
                 }
                 break;
+                case QUIT:
                 case EXIT:
                 {
                     sprintf(send_buffer, "QUIT\r\n");

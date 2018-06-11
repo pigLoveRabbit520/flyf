@@ -5,6 +5,9 @@
 * ls
 * pwd
 * cd
+* delete
+* ascii
+* binary
 * open
 * exit
 
