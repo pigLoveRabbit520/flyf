@@ -179,6 +179,22 @@ int main(int argc, char **argv)
                     }
                 }
                 break;
+                case LLS:
+                {
+                    pid_t pid;
+                    if ((pid = fork()) < 0) {
+                        printf("fork error");
+                        continue;
+                    } else if (pid == 0) {
+                        if (execl("/bin/ls", "ls", "-l", "-a", NULL) < 0) {  
+                            perror("error on exec");  
+                            exit(0);
+                        }
+                    } else {
+                        wait(NULL);
+                    }
+                }
+                break;
                 case CD:
                 {
                     char *token;
@@ -200,6 +216,8 @@ int main(int argc, char **argv)
                     }
                 }
                 break;
+                case LCD:
+                break;
                 case PWD:
                 {
                     sprintf(send_buffer, "PWD\r\n");
@@ -207,6 +225,13 @@ int main(int argc, char **argv)
                      // 227
                     length = get_respond(client_cmd_socket, recv_buffer);
                     printf("%s", recv_buffer);
+                }
+                break;
+                case LPWD:
+                {
+                    char buf[80];
+                    getcwd(buf, sizeof(buf));
+                    printf("current working directory : %s\n", buf);
                 }
                 break;
                 case ASCII:
@@ -246,6 +271,20 @@ int main(int argc, char **argv)
                     }
                 }
                 break;
+                case MKDIR:
+                {
+                    if (!cmd->paths)
+                    {
+                        printf("please input the host\n");
+                        continue;
+                    }
+                    char *dir_name = cmd->paths[0];
+                    sprintf(send_buffer, "MKD %s\r\n", dir_name);
+                    send_cmd(client_cmd_socket, send_buffer);
+                    length = get_respond(client_cmd_socket, recv_buffer);
+                    printf("%s", recv_buffer);
+                }
+                break;
                 case OPEN:
                 {
                     if (!cmd->paths)
@@ -280,6 +319,7 @@ int main(int argc, char **argv)
                 }
                 break;
             }
+            freecommand(cmd);
         }
     }
     //关闭socket

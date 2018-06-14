@@ -3,11 +3,15 @@
 
 # 已支持的命令
 * ls
+* lls
 * pwd
+* lpwd
 * cd
+* lcd
 * delete
 * ascii
 * binary
+* mkdir
 * open
 * exit
 

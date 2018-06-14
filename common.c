@@ -114,3 +114,16 @@ void printcommand(struct command* c)
 		printf("\t\t\t%s\n", c->paths[i]);
 	printf("\n");
 }
+
+void freecommand(struct command* c)
+{
+	if (c->npaths > 0)
+	{
+		int i;
+		// free strings
+		for(i = 0; i < c->npaths; i++)
+			free(c->paths[i]);
+		free(c->paths);
+	}
+	free(c);
+}
