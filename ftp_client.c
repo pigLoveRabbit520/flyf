@@ -96,7 +96,7 @@ int main(int argc, char **argv)
                         continue;
                     }
 
-                    sprintf(send_buffer, "LIST %s\r\n", "");
+                    sprintf(send_buffer, "LIST \r\n");
                     send_cmd(client_cmd_socket, send_buffer);
 
                     // 125打开数据连接，开始传输 226表明完成
@@ -205,15 +205,8 @@ int main(int argc, char **argv)
                     }
                     sprintf(send_buffer, "CWD %s\r\n", cmd->paths[0]);
                     send_cmd(client_cmd_socket, send_buffer);
-                    // 250 success
                     length = get_respond(client_cmd_socket, recv_buffer);
                     printf("%s", recv_buffer);
-                    if (respond_with_code(recv_buffer, 550))
-                    {
-                        // 再接收一次数据，windows FTP server 550问题
-                        get_respond(client_cmd_socket, recv_buffer);
-                        printf("%s", recv_buffer);
-                    }
                 }
                 break;
                 case LCD:
@@ -263,12 +256,6 @@ int main(int argc, char **argv)
                     send_cmd(client_cmd_socket, send_buffer);
                     length = get_respond(client_cmd_socket, recv_buffer);
                     printf("%s", recv_buffer);
-                    if (respond_with_code(recv_buffer, 550))
-                    {
-                        // 再接收一次数据，windows FTP server 550问题
-                        get_respond(client_cmd_socket, recv_buffer);
-                        printf("%s", recv_buffer);
-                    }
                 }
                 break;
                 case MKDIR:

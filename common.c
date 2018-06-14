@@ -96,7 +96,7 @@ struct command* userinputtocommand(char s[LENUSERINPUT])
 		return cmd;
 	else
 	{
-		fprintf(stderr, "\tError parsing command\n");
+		fprintf(stderr, "Unkown command\n");
 		return NULL;
 	}
 }

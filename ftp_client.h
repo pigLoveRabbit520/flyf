@@ -15,6 +15,7 @@
 #include <fcntl.h>
 #include <pwd.h>
 #include <errno.h>
+#include <regex.h>
 #include <arpa/inet.h>
 #include "encode.h"
 #include "common.h"
@@ -48,6 +49,7 @@ bool is_server_disconnected(int client_socket); // server端是否断开连接
 extern int errno;
 
 unsigned int client_cmd_port = 0;
+unsigned short login_time = 0;
 char *server_ip = NULL;
 bool server_connected = false;
 int client_cmd_socket;
@@ -79,10 +81,51 @@ int send_cmd(int client_socket, char* buffer)
     return len;
 }
 
+bool matchRegex(const char* pattern, const char* str)
+{
+    bool result = false;
+    regex_t regex;
+    regcomp(&regex, pattern, REG_EXTENDED);
+    int reti = regexec(&regex, str, 0, NULL, 0);
+    if (reti == 0) result = true;
+    regfree( &regex );
+    return result;
+}
+
+bool is_multi_response(char *str)
+{
+    return matchRegex("^[0-9]{3}-", str);
+}
+
+bool is_multi_response_end(const char *buffer, const char *code)
+{
+    char pattern[10];
+    sprintf(pattern, "%s End\r\n", code);
+    return matchRegex(pattern, buffer);
+}
+
+// win上会多行错误
+// 例如550-The system cannot find the file specified. 它用-表示下面还有内容
+// recv有时候会一次性接受完数据，有时候需要多次
 int get_respond(int client_socket, char* buffer)
 {
     bzero(buffer, BUFFER_SIZE);
     int length = recv(client_socket, buffer, BUFFER_SIZE, 0);
+    if (length <= 0) return length;
+    if (is_multi_response(buffer))
+    {
+        char code[4];
+        bzero(code, 4);
+        memcpy(code, buffer, 3);
+        while(!is_multi_response_end(buffer, code))
+        {
+            char anotherBuff[BUFFER_SIZE];
+            int len = recv(client_socket, anotherBuff, BUFFER_SIZE, 0);
+            if (len <= 0) return len;
+            memcpy(buffer + length, anotherBuff, len);
+            length += len;
+        }
+    }
     return length;
 }
 
@@ -226,14 +269,18 @@ bool is_connected(int socket_fd)
 int user_login(int client_cmd_socket, char *recv_buffer, char *send_buffer)
 {
     int length = 0;
-    // 接受欢迎命令
-    length = get_respond(client_cmd_socket, recv_buffer);
-    if (length < 0)
+    if (login_time == 0)
     {
-        printf("Recieve welcome info from server %s failed!\n", server_ip);
-        return ERR_DISCONNECTED;
+        // 接受欢迎命令
+        length = get_respond(client_cmd_socket, recv_buffer);
+        if (length < 0)
+        {
+            printf("Recieve welcome info from server %s failed!\n", server_ip);
+            return ERR_DISCONNECTED;
+        }
+        printf("%s", recv_buffer);
+        login_time++;
     }
-    printf("%s", recv_buffer);
 
     struct passwd *pws;
     pws = getpwuid(geteuid());
