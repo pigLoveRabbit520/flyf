@@ -60,7 +60,7 @@ int main(int argc, char **argv)
             {
                 close(client_cmd_socket);
                 server_connected = false;
-                printf("server connection is closed\n");
+                printf("not connected\n");
                 continue;
             }
             //printcommand(cmd);
@@ -197,7 +197,6 @@ int main(int argc, char **argv)
                 break;
                 case CD:
                 {
-                    char *token;
                     if (!cmd->paths)
                     {
                         printf("please input the path\n");
@@ -210,6 +209,19 @@ int main(int argc, char **argv)
                 }
                 break;
                 case LCD:
+                {
+                    if (!cmd->paths)
+                    {
+                        printf("please input the path\n");
+                        continue;
+                    }
+                    char *path = cmd->paths[0];
+                    if (chdir(path) != 0) perror("change local working directory failed");
+                    else
+                    {
+                        printf("successfully change local working directory\n");
+                    }
+                }
                 break;
                 case PWD:
                 {
