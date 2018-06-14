@@ -1,5 +1,5 @@
-# TinyFTP
-简单FTP客户端
+# flyf
+简单FTP客户端，取名含义fly+ftp，飞快的ftp
 
 # 已支持的命令
 * ls
