@@ -20,13 +20,15 @@
 #include "encode.h"
 #include "common.h"
 
-#define FTP_SERVER_PORT 21 
-#define BUFFER_SIZE 1024
-#define CMD_READ_BUFFER_SIZE 30
-#define FILE_NAME_MAX_SIZE 512
-#define ERR_DISCONNECTED   -503
-#define ERR_READ_FAILED    -454
-#define ERR_INCORRECT_CODE -465
+#define FTP_SERVER_PORT            21 
+#define BUFFER_SIZE                1024
+#define CMD_READ_BUFFER_SIZE       30
+#define FILE_NAME_MAX_SIZE         512
+#define ERR_DISCONNECTED          -503
+#define ERR_CREATE_BINDED_SOCKTED -523
+#define ERR_CONNECT_SERVER_FAIL   -500
+#define ERR_READ_FAILED           -454
+#define ERR_INCORRECT_CODE        -465
 
 ushort get_rand_port();
 int send_cmd(int client_socket, char* buffer);
@@ -35,11 +37,11 @@ bool start_with(const char *pre, const char *str);
 char *fgets_wrapper(char *buffer, size_t buflen, FILE *fp);
 bool respond_with_code(const char *respond, int code); // 是否返回正确响应码
 unsigned int cal_data_port(const char *recv_buffer);
-int get_client_data_socket(unsigned int client_cmd_port);
 bool is_connected(int socket_fd);
 int user_login(int client_cmd_socket, char *recv_buffer, char *send_buffer);
 bool check_server_ip(const char *server_ip);
 int connect_server(int socket, const char *server_ip, unsigned int server_port);
+int enter_passvie_mode(int client_cmd_socket, int cmd_port, char *recv_buffer, char *send_buffer);
 int get_server_connected_socket(char *server_ip, unsigned int client_port, unsigned int server_port);
 void set_flag(int, int);
 void clr_flag(int, int);
@@ -182,38 +184,38 @@ unsigned int cal_data_port(const char *recv_buffer)
     return p1 * 256 + p2;
 }
 
-int get_client_data_socket(unsigned int client_cmd_port)
-{
-    struct sockaddr_in client_addr;
-    bzero(&client_addr, sizeof(client_addr));
-    client_addr.sin_family = AF_INET;
-    client_addr.sin_addr.s_addr = htons(INADDR_ANY);
-    client_addr.sin_port = client_cmd_port + 1;
-    int client_data_socket = socket(AF_INET, SOCK_STREAM, 0);
-    if(client_data_socket < 0)
-    {
-        perror("Create client data socket failed!\n");
-    }
-    // 端口复用
-    int opt = 1;
-    if (setsockopt(client_data_socket, SOL_SOCKET,SO_REUSEADDR, &opt, sizeof(opt)))
-    {
-        perror("setsockopt failed");
-        return -1; 
-    }
-    if(bind(client_data_socket, (struct sockaddr*)&client_addr, sizeof(client_addr)))
-    {
-        perror("Client data socket bind port failed!\n");
-        return -1;
-    }
-    return client_data_socket;
-}
-
 bool check_server_ip(const char *ip_addr)
 {
     struct sockaddr_in addr;
     bzero(&addr, sizeof(addr));
     return inet_pton(AF_INET, ip_addr, &(addr.sin_addr)) != 0;
+}
+
+int get_binded_socket(unsigned int local_port)
+{
+    struct sockaddr_in client_addr;
+    bzero(&client_addr, sizeof(client_addr));
+    client_addr.sin_family = AF_INET;
+    client_addr.sin_addr.s_addr = htons(INADDR_ANY);
+    client_addr.sin_port = local_port;
+    int client_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if(client_socket < 0)
+    {
+        perror("Create socket failed!");
+    }
+    // 端口复用
+    int opt = 1;
+    if (setsockopt(client_socket, SOL_SOCKET,SO_REUSEADDR, &opt, sizeof(opt)))
+    {
+        perror("Setsockopt failed");
+        return -1; 
+    }
+    if(bind(client_socket, (struct sockaddr*)&client_addr, sizeof(client_addr)))
+    {
+        perror("Client socket bind port failed!\n");
+        return -1;
+    }
+    return client_socket;
 }
 
 int connect_server(int socket, const char *server_ip, unsigned int server_port)
@@ -231,6 +233,46 @@ int connect_server(int socket, const char *server_ip, unsigned int server_port)
         return -1;
     }
     return 0;
+}
+
+// 进入被动模式
+int enter_passvie_mode(int client_cmd_socket, int cmd_port, char *recv_buffer, char *send_buffer)
+{
+    // 被动模式
+    int client_data_socket = get_binded_socket(cmd_port + 1);
+    if (client_data_socket < 0)
+    {
+        return ERR_CREATE_BINDED_SOCKTED;
+    }
+
+    sprintf(send_buffer, "PASV\r\n");
+    if (send_cmd(client_cmd_socket, send_buffer) <= 0) {
+        close(client_data_socket);
+        printf("send [PASV] command failed\n");
+        return ERR_DISCONNECTED;
+    }
+     // 227
+    if (get_respond(client_cmd_socket, recv_buffer) <= 0)
+    {
+        close(client_data_socket);
+        printf("Recieve [PASV] command info from server %s failed!\n", server_ip);
+        return ERR_DISCONNECTED;
+    }
+    if (!respond_with_code(recv_buffer, 227))
+    {
+        close(client_data_socket);
+        printf("%s\n", recv_buffer);
+        return ERR_INCORRECT_CODE;
+    }
+    // 计算数据端口
+    unsigned int server_data_port = cal_data_port(recv_buffer);
+    if (connect_server(client_data_socket, server_ip, server_data_port) < 0)
+    {
+        close(client_data_socket);
+        return ERR_CONNECT_SERVER_FAIL;
+    }
+    
+    return client_data_socket;
 }
 
 int get_server_connected_socket(char *server_ip, unsigned int client_port, unsigned int server_port)
@@ -272,8 +314,7 @@ int user_login(int client_cmd_socket, char *recv_buffer, char *send_buffer)
     if (login_time == 0)
     {
         // 接受欢迎命令
-        length = get_respond(client_cmd_socket, recv_buffer);
-        if (length < 0)
+        if (get_respond(client_cmd_socket, recv_buffer) <= 0)
         {
             printf("Recieve welcome info from server %s failed!\n", server_ip);
             return ERR_DISCONNECTED;

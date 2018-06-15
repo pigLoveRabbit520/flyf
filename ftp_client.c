@@ -5,7 +5,7 @@ int main(int argc, char **argv)
 {
     if (argc != 2)
     {
-        printf("Usage: ./%s Server IP Address\n", argv[0]);
+        printf("Usage: %s Server IP Address\n", argv[0]);
         exit(1);
     }
     // 检查ip合法
@@ -68,48 +68,40 @@ int main(int argc, char **argv)
             {
                 case LS:
                 {
-                    // 被动模式
-                    int client_data_socket = get_client_data_socket(client_cmd_port);
-                    if (client_data_socket < 0)
+                    int client_data_socket = enter_passvie_mode(client_cmd_socket, client_cmd_port + 1, send_buffer, recv_buffer);
+                    if (client_data_socket == ERR_DISCONNECTED)
+                    {
+                        close(client_cmd_socket);
+                        server_connected = false;
+                        continue;
+                    }
+                    else if (client_data_socket == ERR_CREATE_BINDED_SOCKTED || client_data_socket == ERR_CONNECT_SERVER_FAIL || client_data_socket == ERR_INCORRECT_CODE)
                     {
                         continue;
                     }
-                    sprintf(send_buffer, "PASV\r\n");
-                    send_cmd(client_cmd_socket, send_buffer);
-                     // 227
-                    length = get_respond(client_cmd_socket, recv_buffer);
-                    if (length < 0)
-                    {
-                        printf("Recieve data from server %s failed!\n", server_ip);
-                        continue;
-                    }
-                    if (!respond_with_code(recv_buffer, 227))
-                    {
-                        printf("%s\n", recv_buffer);
-                        close(client_data_socket);
-                        continue;
-                    }
-                    unsigned int server_data_port = cal_data_port(recv_buffer); // 计算数据端口
-                    int res = connect_server(client_data_socket, server_ip, server_data_port);
-                    if (res < 0) {
-                        close(client_data_socket);
-                        continue;
-                    }
-
                     sprintf(send_buffer, "LIST \r\n");
-                    send_cmd(client_cmd_socket, send_buffer);
+                    if (send_cmd(client_cmd_socket, send_buffer) <= 0)
+                    {
+                        close(client_data_socket);
+                        close(client_cmd_socket);
+                        printf("send [LIST] command failed\n");
+                        continue;
+                    }
 
                     // 125打开数据连接，开始传输 226表明完成
                     // 150打开连接
-                    // linux vsftpd 发送150 Here comes the directory listing
-                    length = get_respond(client_cmd_socket, recv_buffer);
-                    if (length < 0)
+                    // linux vsftpd 发送150
+                    // windows FTP Sever 是125
+                    if (get_respond(client_cmd_socket, recv_buffer) <= 0)
                     {
-                        printf("Recieve data from server %s failed!\n", server_ip);
+                        close(client_data_socket);
+                        close(client_cmd_socket);
+                        printf("Recieve [LIST] command info from server %s failed!\n", server_ip);
                         continue;
                     }
                     if (!respond_with_code(recv_buffer, 125) && !respond_with_code(recv_buffer, 150))
                     {
+                        close(client_data_socket);
                         printf("%s\n", recv_buffer);
                         continue;
                     }
@@ -193,6 +185,136 @@ int main(int argc, char **argv)
                     } else {
                         wait(NULL);
                     }
+                }
+                break;
+                case GET:
+                {
+                    if (!cmd->paths)
+                    {
+                        printf("please input the file\n");
+                        continue;
+                    }
+                    char *filename = cmd->paths[0];
+                    int client_data_socket = enter_passvie_mode(client_cmd_socket, client_cmd_port + 1, send_buffer, recv_buffer);
+                    if (client_data_socket == ERR_DISCONNECTED)
+                    {
+                        close(client_cmd_socket);
+                        server_connected = false;
+                        continue;
+                    }
+                    else if (client_data_socket == ERR_CREATE_BINDED_SOCKTED || client_data_socket == ERR_CONNECT_SERVER_FAIL || client_data_socket == ERR_INCORRECT_CODE)
+                    {
+                        continue;
+                    } 
+                    sprintf(send_buffer, "SIZE %s\r\n", filename);
+                    if (send_cmd(client_cmd_socket, send_buffer) <= 0)
+                    {
+                        close(client_data_socket);
+                        close(client_cmd_socket);
+                        printf("send [SIZE] command failed\n");
+                        continue;
+                    }
+                    if (get_respond(client_cmd_socket, recv_buffer) <= 0)
+                    {
+                        close(client_data_socket);
+                        close(client_cmd_socket);
+                        printf("Recieve [SIZE] command info from server %s failed!\n", server_ip);
+                        continue;
+                    }
+                    if (!respond_with_code(recv_buffer, 213))
+                    {
+                        close(client_data_socket);
+                        printf("%s\n", recv_buffer);
+                        continue;
+                    }
+                    printf("file size is %sB\n", recv_buffer + 4);
+
+                    sprintf(send_buffer, "RETR %s\r\n", filename);
+                    if (send_cmd(client_cmd_socket, send_buffer) <= 0)
+                    {
+                        close(client_data_socket);
+                        close(client_cmd_socket);
+                        printf("send [RETR] command failed\n");
+                        continue;
+                    }
+                    if (get_respond(client_cmd_socket, recv_buffer) <= 0)
+                    {
+                        close(client_data_socket);
+                        close(client_cmd_socket);
+                        printf("Recieve [RETR] command info from server %s failed!\n", server_ip);
+                        continue;
+                    }
+                    if (!respond_with_code(recv_buffer, 150))
+                    {
+                        close(client_data_socket);
+                        printf("%s\n", recv_buffer);
+                        continue;
+                    }
+                    printf("get recv %s\n", recv_buffer);
+
+                    // // 非阻塞
+                    // set_flag(client_data_socket, O_NONBLOCK);
+                    // pid_t pid;
+                    // if ((pid = fork()) < 0) {
+                    //     printf("fork error");
+                    //     continue;
+                    // } else if (pid == 0) {
+                    //     char data_buffer[BUFFER_SIZE];
+                    //     char *ptr = "";
+                    //     int data_len = 0;
+                    //     int pre_len = 0;
+                    //     for (;;)
+                    //     {
+                    //         bzero(data_buffer, BUFFER_SIZE);
+                    //         int length = recv(client_data_socket, data_buffer, BUFFER_SIZE, 0);
+                    //         if (length == 0)
+                    //         {
+                    //             close(client_data_socket);
+                    //             break;
+                    //         }
+                    //         else if (length < 0)
+                    //         {
+                    //             if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)
+                    //             {
+                    //                 continue;
+                    //             }
+                    //             close(client_data_socket);
+                    //             printf("get data failed\n");
+                    //             exit(1);
+                    //         }
+                    //         pre_len = data_len;
+                    //         data_len += length;
+                    //         char *tmp_ptr = (char *)calloc(data_len, sizeof(char));
+                    //         memcpy(tmp_ptr, ptr, pre_len);
+                    //         memcpy(tmp_ptr + pre_len, data_buffer, length);
+                    //         if (pre_len > 0) free(ptr);
+                    //         ptr = tmp_ptr;
+                    //     }
+                    //     char *tmp_ptr = (char *)calloc(data_len * 2, sizeof(char));
+                    //     g2u(ptr, data_len, tmp_ptr, data_len * 2);
+                    //     printf("%s", tmp_ptr);
+                    //     // 要接收目录列表是否为空
+                    //     if (data_len > 0)
+                    //     {
+                    //         free(ptr);
+                    //         free(tmp_ptr);
+                    //     }
+                    //     exit(0);
+                    // } else {
+                    //     length = get_respond(client_cmd_socket, recv_buffer);
+                    //     if (length < 0)
+                    //     {
+                    //         printf("Recieve data from server %s failed!\n", server_ip);
+                    //         continue;
+                    //     }
+                    //     if (!respond_with_code(recv_buffer, 226))
+                    //     {
+                    //         printf("LIST end failed\n");
+                    //         continue;
+                    //     }
+                    //     int status = 0;
+                    //     waitpid(pid, &status, 0);
+                    // }
                 }
                 break;
                 case CD:
