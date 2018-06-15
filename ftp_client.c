@@ -105,6 +105,8 @@ int main(int argc, char **argv)
                         printf("%s\n", recv_buffer);
                         continue;
                     }
+                    // 注意发送了LIST命令后，可能数据端口发送很快
+                    // 测试发现这里接收数据时，可能会已经收到了226 Transfer complete.了
                     // 非阻塞
                     set_flag(client_data_socket, O_NONBLOCK);
 
