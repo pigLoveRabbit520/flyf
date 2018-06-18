@@ -252,7 +252,7 @@ int main(int argc, char **argv)
                         printf("Recieve [RETR] command info from server %s failed!\n", server_ip);
                         continue;
                     }
-                    if (!respond_with_code(recv_buffer, 150))
+                    if (!respond_with_code(recv_buffer, 125))
                     {
                         close(client_data_socket);
                         printf("%s\n", recv_buffer);
@@ -300,10 +300,9 @@ int main(int argc, char **argv)
                         fclose(fp);
                         exit(0);
                     } else {
-                        length = get_response(client_cmd_socket, recv_buffer);
-                        if (length < 0)
+                        if (get_response(client_cmd_socket, recv_buffer) <= 0)
                         {
-                            printf("Recieve data from server %s failed!\n", server_ip);
+                            printf("[GET] command recieve data from server %s failed!\n", server_ip);
                             continue;
                         }
                         if (!respond_with_code(recv_buffer, 226))
@@ -311,6 +310,7 @@ int main(int argc, char **argv)
                             printf("GET end failed\n");
                             continue;
                         }
+                        printf("%s", recv_buffer);
                         int status = 0;
                         waitpid(pid, &status, 0);
                     }
