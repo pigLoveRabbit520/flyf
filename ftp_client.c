@@ -232,8 +232,11 @@ int main(int argc, char **argv)
                         printf("%s\n", recv_buffer);
                         continue;
                     }
-                    printf("file size is %sB\n", recv_buffer + 4);
-
+                    char *filesizeRes = (char *)calloc(strlen(recv_buffer) - 6, sizeof(char));
+                    strncpy(filesizeRes, recv_buffer + 4, strlen(recv_buffer) - 6);
+                    // eg:213 228\r\n
+                    printf("file size is %sB\n", filesizeRes);
+                    free(filesizeRes);
                     sprintf(send_buffer, "RETR %s\r\n", filename);
                     if (send_cmd(client_cmd_socket, send_buffer) <= 0)
                     {
@@ -255,71 +258,62 @@ int main(int argc, char **argv)
                         printf("%s\n", recv_buffer);
                         continue;
                     }
-                    printf("get recv %s\n", recv_buffer);
 
-                    // // 非阻塞
-                    // set_flag(client_data_socket, O_NONBLOCK);
-                    // pid_t pid;
-                    // if ((pid = fork()) < 0) {
-                    //     printf("fork error");
-                    //     continue;
-                    // } else if (pid == 0) {
-                    //     char data_buffer[BUFFER_SIZE];
-                    //     char *ptr = "";
-                    //     int data_len = 0;
-                    //     int pre_len = 0;
-                    //     for (;;)
-                    //     {
-                    //         bzero(data_buffer, BUFFER_SIZE);
-                    //         int length = recv(client_data_socket, data_buffer, BUFFER_SIZE, 0);
-                    //         if (length == 0)
-                    //         {
-                    //             close(client_data_socket);
-                    //             break;
-                    //         }
-                    //         else if (length < 0)
-                    //         {
-                    //             if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)
-                    //             {
-                    //                 continue;
-                    //             }
-                    //             close(client_data_socket);
-                    //             printf("get data failed\n");
-                    //             exit(1);
-                    //         }
-                    //         pre_len = data_len;
-                    //         data_len += length;
-                    //         char *tmp_ptr = (char *)calloc(data_len, sizeof(char));
-                    //         memcpy(tmp_ptr, ptr, pre_len);
-                    //         memcpy(tmp_ptr + pre_len, data_buffer, length);
-                    //         if (pre_len > 0) free(ptr);
-                    //         ptr = tmp_ptr;
-                    //     }
-                    //     char *tmp_ptr = (char *)calloc(data_len * 2, sizeof(char));
-                    //     g2u(ptr, data_len, tmp_ptr, data_len * 2);
-                    //     printf("%s", tmp_ptr);
-                    //     // 要接收目录列表是否为空
-                    //     if (data_len > 0)
-                    //     {
-                    //         free(ptr);
-                    //         free(tmp_ptr);
-                    //     }
-                    //     exit(0);
-                    // } else {
-                    //     length = get_response(client_cmd_socket, recv_buffer);
-                    //     if (length < 0)
-                    //     {
-                    //         printf("Recieve data from server %s failed!\n", server_ip);
-                    //         continue;
-                    //     }
-                    //     if (!respond_with_code(recv_buffer, 226))
-                    //     {
-                    //         printf("LIST end failed\n");
-                    //         continue;
-                    //     }
-                    //     int status = 0;
-                    //     waitpid(pid, &status, 0);
-                    // }
+                    // 非阻塞
+                    set_flag(client_data_socket, O_NONBLOCK);
+                    pid_t pid;
+                    if ((pid = fork()) < 0) {
+                        printf("fork error");
+                        continue;
+                    } else if (pid == 0) {
+                        FILE *fp;
+                        if ((fp = fopen(filename, "wb")) == NULL)
+                        {
+                            close(client_data_socket);
+                            printf("open file failed\n");
+                            exit(1);
+                        }
+                        size_t char_size = sizeof(char);
+                        char data_buffer[BUFFER_SIZE];
+                        char *ptr = "";
+                        for (;;)
+                        {
+                            bzero(data_buffer, BUFFER_SIZE);
+                            int length = recv(client_data_socket, data_buffer, BUFFER_SIZE, 0);
+                            if (length == 0)
+                            {
+                                close(client_data_socket);
+                                break;
+                            }
+                            else if (length < 0)
+                            {
+                                if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)
+                                {
+                                    continue;
+                                }
+                                close(client_data_socket);
+                                printf("get data failed\n");
+                                exit(1);
+                            }
+                            fwrite(data_buffer, char_size, length, fp);
+                        }
+                        fclose(fp);
+                        exit(0);
+                    } else {
+                        length = get_response(client_cmd_socket, recv_buffer);
+                        if (length < 0)
+                        {
+                            printf("Recieve data from server %s failed!\n", server_ip);
+                            continue;
+                        }
+                        if (!respond_with_code(recv_buffer, 226))
+                        {
+                            printf("GET end failed\n");
+                            continue;
+                        }
+                        int status = 0;
+                        waitpid(pid, &status, 0);
+                    }
                 }
                 break;
                 case CD:
