@@ -92,7 +92,7 @@ int main(int argc, char **argv)
                     // 150打开连接
                     // linux vsftpd 发送150
                     // windows FTP Sever 是125
-                    if (get_respond(client_cmd_socket, recv_buffer) <= 0)
+                    if (get_response(client_cmd_socket, recv_buffer) <= 0)
                     {
                         close(client_data_socket);
                         close(client_cmd_socket);
@@ -157,16 +157,19 @@ int main(int argc, char **argv)
                         }
                         exit(0);
                     } else {
-                        length = get_respond(client_cmd_socket, recv_buffer);
-                        if (length < 0)
+                        // 可能会已经收到了226 Transfer complete.了
+                        if (!respond_exists_code(recv_buffer, 226))
                         {
-                            printf("Recieve data from server %s failed!\n", server_ip);
-                            continue;
-                        }
-                        if (!respond_with_code(recv_buffer, 226))
-                        {
-                            printf("LIST end failed\n");
-                            continue;
+                            if (get_response(client_cmd_socket, recv_buffer) <= 0)
+                            {
+                                printf("Recieve data from server %s failed!\n", server_ip);
+                                continue;
+                            }
+                            if (!respond_with_code(recv_buffer, 226))
+                            {
+                                printf("LIST end failed\n");
+                                continue;
+                            }
                         }
                         int status = 0;
                         waitpid(pid, &status, 0);
@@ -216,7 +219,7 @@ int main(int argc, char **argv)
                         printf("send [SIZE] command failed\n");
                         continue;
                     }
-                    if (get_respond(client_cmd_socket, recv_buffer) <= 0)
+                    if (get_response(client_cmd_socket, recv_buffer) <= 0)
                     {
                         close(client_data_socket);
                         close(client_cmd_socket);
@@ -239,7 +242,7 @@ int main(int argc, char **argv)
                         printf("send [RETR] command failed\n");
                         continue;
                     }
-                    if (get_respond(client_cmd_socket, recv_buffer) <= 0)
+                    if (get_response(client_cmd_socket, recv_buffer) <= 0)
                     {
                         close(client_data_socket);
                         close(client_cmd_socket);
@@ -303,7 +306,7 @@ int main(int argc, char **argv)
                     //     }
                     //     exit(0);
                     // } else {
-                    //     length = get_respond(client_cmd_socket, recv_buffer);
+                    //     length = get_response(client_cmd_socket, recv_buffer);
                     //     if (length < 0)
                     //     {
                     //         printf("Recieve data from server %s failed!\n", server_ip);
@@ -328,7 +331,7 @@ int main(int argc, char **argv)
                     }
                     sprintf(send_buffer, "CWD %s\r\n", cmd->paths[0]);
                     send_cmd(client_cmd_socket, send_buffer);
-                    length = get_respond(client_cmd_socket, recv_buffer);
+                    length = get_response(client_cmd_socket, recv_buffer);
                     printf("%s", recv_buffer);
                 }
                 break;
@@ -352,7 +355,7 @@ int main(int argc, char **argv)
                     sprintf(send_buffer, "PWD\r\n");
                     send_cmd(client_cmd_socket, send_buffer);
                      // 227
-                    length = get_respond(client_cmd_socket, recv_buffer);
+                    length = get_response(client_cmd_socket, recv_buffer);
                     printf("%s", recv_buffer);
                 }
                 break;
@@ -368,7 +371,7 @@ int main(int argc, char **argv)
                     sprintf(send_buffer, "TYPE A\r\n");
                     send_cmd(client_cmd_socket, send_buffer);
                      // 227
-                    length = get_respond(client_cmd_socket, recv_buffer);
+                    length = get_response(client_cmd_socket, recv_buffer);
                     printf("%s", recv_buffer);
                 }
                 break;
@@ -377,7 +380,7 @@ int main(int argc, char **argv)
                     sprintf(send_buffer, "TYPE I\r\n");
                     send_cmd(client_cmd_socket, send_buffer);
                      // 227
-                    length = get_respond(client_cmd_socket, recv_buffer);
+                    length = get_response(client_cmd_socket, recv_buffer);
                     printf("%s", recv_buffer);
                 }
                 break;
@@ -390,7 +393,7 @@ int main(int argc, char **argv)
                     }
                     sprintf(send_buffer, "DELE %s\r\n", cmd->paths[0]);
                     send_cmd(client_cmd_socket, send_buffer);
-                    length = get_respond(client_cmd_socket, recv_buffer);
+                    length = get_response(client_cmd_socket, recv_buffer);
                     printf("%s", recv_buffer);
                 }
                 break;
@@ -404,7 +407,7 @@ int main(int argc, char **argv)
                     char *dir_name = cmd->paths[0];
                     sprintf(send_buffer, "MKD %s\r\n", dir_name);
                     send_cmd(client_cmd_socket, send_buffer);
-                    length = get_respond(client_cmd_socket, recv_buffer);
+                    length = get_response(client_cmd_socket, recv_buffer);
                     printf("%s", recv_buffer);
                 }
                 break;

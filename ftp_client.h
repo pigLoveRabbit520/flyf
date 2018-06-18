@@ -31,11 +31,12 @@
 #define ERR_INCORRECT_CODE        -465
 
 ushort get_rand_port();
-int send_cmd(int client_socket, char* buffer);
-int get_respond(int client_socket, char* buffer);
-bool start_with(const char *pre, const char *str);
 char *fgets_wrapper(char *buffer, size_t buflen, FILE *fp);
+int send_cmd(int client_socket, char* buffer);
+int get_response(int client_socket, char* buffer);
+bool start_with(const char *pre, const char *str);
 bool respond_with_code(const char *respond, int code); // 是否返回正确响应码
+bool respond_exists_code(const char *respond, int code); // 接收了多行返回是否返回正确响应码
 unsigned int cal_data_port(const char *recv_buffer);
 bool is_connected(int socket_fd);
 int user_login(int client_cmd_socket, char *recv_buffer, char *send_buffer);
@@ -83,7 +84,7 @@ int send_cmd(int client_socket, char* buffer)
     return len;
 }
 
-bool matchRegex(const char* pattern, const char* str)
+bool match_regex(const char* pattern, const char* str)
 {
     bool result = false;
     regex_t regex;
@@ -96,20 +97,20 @@ bool matchRegex(const char* pattern, const char* str)
 
 bool is_multi_response(char *str)
 {
-    return matchRegex("^[0-9]{3}-", str);
+    return match_regex("^[0-9]{3}-", str);
 }
 
 bool is_multi_response_end(const char *buffer, const char *code)
 {
     char pattern[10];
     sprintf(pattern, "%s End\r\n", code);
-    return matchRegex(pattern, buffer);
+    return match_regex(pattern, buffer);
 }
 
 // win上会多行错误
 // 例如550-The system cannot find the file specified. 它用-表示下面还有内容
 // recv有时候会一次性接受完数据，有时候需要多次
-int get_respond(int client_socket, char* buffer)
+int get_response(int client_socket, char* buffer)
 {
     bzero(buffer, BUFFER_SIZE);
     int length = recv(client_socket, buffer, BUFFER_SIZE, 0);
@@ -150,11 +151,18 @@ bool start_with(const char *str, const char *pre)
     return lenstr < lenpre ? false : strncmp(pre, str, lenpre) == 0;
 }
 
-bool respond_with_code(const char *respond, int code)
+bool respond_with_code(const char *response, int code)
 {
     char code_str[4];
     sprintf(code_str, "%d", code);
-    return start_with(respond, code_str);
+    return start_with(response, code_str);
+}
+
+bool respond_exists_code(const char *response, int code)
+{
+    char pattern[6];
+    sprintf(pattern, "\r\n%d", code);
+    match_regex(pattern, response);
 }
 
 unsigned int cal_data_port(const char *recv_buffer)
@@ -252,7 +260,7 @@ int enter_passvie_mode(int client_cmd_socket, int cmd_port, char *recv_buffer, c
         return ERR_DISCONNECTED;
     }
      // 227
-    if (get_respond(client_cmd_socket, recv_buffer) <= 0)
+    if (get_response(client_cmd_socket, recv_buffer) <= 0)
     {
         close(client_data_socket);
         printf("Recieve [PASV] command info from server %s failed!\n", server_ip);
@@ -314,7 +322,7 @@ int user_login(int client_cmd_socket, char *recv_buffer, char *send_buffer)
     if (login_time == 0)
     {
         // 接受欢迎命令
-        if (get_respond(client_cmd_socket, recv_buffer) <= 0)
+        if (get_response(client_cmd_socket, recv_buffer) <= 0)
         {
             printf("Recieve welcome info from server %s failed!\n", server_ip);
             return ERR_DISCONNECTED;
@@ -341,7 +349,7 @@ int user_login(int client_cmd_socket, char *recv_buffer, char *send_buffer)
     }
 
     // 331
-    length = get_respond(client_cmd_socket, recv_buffer);
+    length = get_response(client_cmd_socket, recv_buffer);
     if (length < 0)
     {
         printf("Recieve [User] command info from server %s failed!\n", server_ip);
@@ -364,7 +372,7 @@ int user_login(int client_cmd_socket, char *recv_buffer, char *send_buffer)
     }
     
     // 230
-    length = get_respond(client_cmd_socket, recv_buffer);
+    length = get_response(client_cmd_socket, recv_buffer);
     if (length < 0)
     {
         printf("Recieve [PASS] command info from server %s failed!\n", server_ip);
