@@ -8,6 +8,7 @@
 * lpwd
 * cd
 * lcd
+* get
 * delete
 * ascii
 * binary
@@ -19,4 +20,4 @@
 make
 
 # TODO
-* 完成上传下载文件命令
+* 完成上传文件命令
