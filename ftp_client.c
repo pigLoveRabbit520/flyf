@@ -102,7 +102,7 @@ int main(int argc, char **argv)
                     if (!respond_with_code(recv_buffer, 125) && !respond_with_code(recv_buffer, 150))
                     {
                         close(client_data_socket);
-                        printf("%s\n", recv_buffer);
+                        printf("%s", recv_buffer);
                         continue;
                     }
                     // 注意发送了LIST命令后，可能数据端口发送很快
@@ -252,10 +252,10 @@ int main(int argc, char **argv)
                         printf("Recieve [RETR] command info from server %s failed!\n", server_ip);
                         continue;
                     }
-                    if (!respond_with_code(recv_buffer, 125))
+                    if (!respond_with_code(recv_buffer, 125) && !respond_with_code(recv_buffer, 150))
                     {
                         close(client_data_socket);
-                        printf("%s\n", recv_buffer);
+                        printf("%s", recv_buffer);
                         continue;
                     }
 
@@ -314,6 +314,106 @@ int main(int argc, char **argv)
                         int status = 0;
                         waitpid(pid, &status, 0);
                     }
+                }
+                break;
+                case PUT:
+                {
+                    if (!cmd->paths)
+                    {
+                        printf("please input the filename\n");
+                        continue;
+                    }
+                    char *filename = cmd->paths[0];
+                    int client_data_socket = enter_passvie_mode(client_cmd_socket, client_cmd_port + 1, send_buffer, recv_buffer);
+                    if (client_data_socket == ERR_DISCONNECTED)
+                    {
+                        close(client_cmd_socket);
+                        server_connected = false;
+                        continue;
+                    }
+                    else if (client_data_socket == ERR_CREATE_BINDED_SOCKTED || client_data_socket == ERR_CONNECT_SERVER_FAIL || client_data_socket == ERR_INCORRECT_CODE)
+                    {
+                        continue;
+                    }
+                    sprintf(send_buffer, "STOR %s\r\n", filename);
+                    if (send_cmd(client_cmd_socket, send_buffer) <= 0)
+                    {
+                        close(client_data_socket);
+                        close(client_cmd_socket);
+                        printf("send [STOR] command failed\n");
+                        continue;
+                    }
+                    if (get_response(client_cmd_socket, recv_buffer) <= 0)
+                    {
+                        close(client_data_socket);
+                        close(client_cmd_socket);
+                        printf("Recieve [STOR] command info from server %s failed!\n", server_ip);
+                        continue;
+                    }
+                    if (!respond_with_code(recv_buffer, 125) && !respond_with_code(recv_buffer, 150))
+                    {
+                        close(client_data_socket);
+                        printf("%s", recv_buffer);
+                        continue;
+                    }
+
+                    // 非阻塞
+                    set_flag(client_data_socket, O_NONBLOCK);
+                    pid_t pid;
+                    if ((pid = fork()) < 0) {
+                        printf("fork error");
+                        continue;
+                    } else if (pid == 0) {
+                        FILE *fp;
+                        if ((fp = fopen(filename, "rb")) == NULL)
+                        {
+                            close(client_data_socket);
+                            printf("open file failed\n");
+                            exit(1);
+                        }
+                        size_t char_size = sizeof(char);
+                        char data_buffer[FILE_READ_BUFFER_SIZE];
+                        int numread;
+                        for (;;)
+                        {
+                            numread = fread(data_buffer, char_size, FILE_READ_BUFFER_SIZE, fp);
+                            bzero(data_buffer, FILE_READ_BUFFER_SIZE);
+                            int length = send(client_data_socket, data_buffer, FILE_READ_BUFFER_SIZE, 0);
+                            if (length == 0)
+                            {
+                                close(client_data_socket);
+                                break;
+                            }
+                            else if (length < 0)
+                            {
+                                if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)
+                                {
+                                    continue;
+                                }
+                                close(client_data_socket);
+                                printf("[PUT] command send data failed\n");
+                                exit(1);
+                            }
+                            if (numread == FILE_READ_BUFFER_SIZE) continue;
+                            else if (numread < FILE_READ_BUFFER_SIZE && numread > 0)
+                                break;
+                            else
+                            {
+                                printf("read file failed\n");
+                                break;
+                            }
+                        }
+                        fclose(fp);
+                        exit(0);
+                    } else {
+                        int status = 0;
+                        waitpid(pid, &status, 0);
+                        if (status == 0)
+                            printf("send file %s complete.\n", filename);
+                        else 
+                            printf("send file %s failed.\n", filename);
+                    }
+
                 }
                 break;
                 case CD:

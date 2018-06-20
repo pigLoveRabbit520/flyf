@@ -22,6 +22,7 @@
 
 #define FTP_SERVER_PORT            21 
 #define BUFFER_SIZE                1024
+#define FILE_READ_BUFFER_SIZE      200
 #define CMD_READ_BUFFER_SIZE       30
 #define FILE_NAME_MAX_SIZE         512
 #define ERR_DISCONNECTED          -503
