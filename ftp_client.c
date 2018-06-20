@@ -275,7 +275,6 @@ int main(int argc, char **argv)
                         }
                         size_t char_size = sizeof(char);
                         char data_buffer[BUFFER_SIZE];
-                        char *ptr = "";
                         for (;;)
                         {
                             bzero(data_buffer, BUFFER_SIZE);
@@ -376,30 +375,35 @@ int main(int argc, char **argv)
                         int numread;
                         for (;;)
                         {
-                            numread = fread(data_buffer, char_size, FILE_READ_BUFFER_SIZE, fp);
                             bzero(data_buffer, FILE_READ_BUFFER_SIZE);
-                            int length = send(client_data_socket, data_buffer, FILE_READ_BUFFER_SIZE, 0);
-                            if (length == 0)
-                            {
-                                close(client_data_socket);
-                                break;
-                            }
-                            else if (length < 0)
-                            {
-                                if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)
-                                {
-                                    continue;
-                                }
-                                close(client_data_socket);
-                                printf("[PUT] command send data failed\n");
-                                exit(1);
-                            }
-                            if (numread == FILE_READ_BUFFER_SIZE) continue;
-                            else if (numread < FILE_READ_BUFFER_SIZE && numread > 0)
-                                break;
-                            else
+                            numread = fread(data_buffer, char_size, FILE_READ_BUFFER_SIZE, fp);
+                            if (numread < 0)
                             {
                                 printf("read file failed\n");
+                                break;
+                            } 
+                            else if (numread > 0)
+                            {
+                                int length = send(client_data_socket, data_buffer, FILE_READ_BUFFER_SIZE, 0);
+                                if (length == 0)
+                                {
+                                    close(client_data_socket);
+                                    break;
+                                }
+                                else if (length < 0)
+                                {
+                                    if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)
+                                    {
+                                        continue;
+                                    }
+                                    close(client_data_socket);
+                                    printf("[PUT] command send data failed\n");
+                                    exit(1);
+                                }
+                            }
+                            if (numread == FILE_READ_BUFFER_SIZE) continue;
+                            else {
+                                close(client_data_socket);
                                 break;
                             }
                         }
