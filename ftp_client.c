@@ -384,7 +384,7 @@ int main(int argc, char **argv)
                             } 
                             else if (numread > 0)
                             {
-                                int length = send(client_data_socket, data_buffer, FILE_READ_BUFFER_SIZE, 0);
+                                int length = send(client_data_socket, data_buffer, numread, 0);
                                 if (length == 0)
                                 {
                                     close(client_data_socket);
