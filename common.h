@@ -69,7 +69,7 @@ struct command* userinputtocommand(char [LENUSERINPUT]);
 void printcommand(struct command* c);
 void freecommand(struct command* c);
 
-#define NCOMMANDS 24
+#define NCOMMANDS 25
 enum COMMAND
 	{
 		GET,
@@ -94,6 +94,7 @@ enum COMMAND
 		ASCII,
 		BINARY,
 		OPEN,
+		HELP,
 		QUIT,
 		EXIT
 	};

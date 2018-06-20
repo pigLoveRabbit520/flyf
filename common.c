@@ -32,6 +32,7 @@ static const char commandlist[NCOMMANDS][10] =
 		"ascii",
 		"binary",
 		"open",
+		"help",
 		"quit",
 		"exit"
 	};

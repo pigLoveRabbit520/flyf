@@ -387,7 +387,6 @@ int main(int argc, char **argv)
                                 int length = send(client_data_socket, data_buffer, numread, 0);
                                 if (length == 0)
                                 {
-                                    close(client_data_socket);
                                     break;
                                 }
                                 else if (length < 0)
@@ -396,17 +395,16 @@ int main(int argc, char **argv)
                                     {
                                         continue;
                                     }
-                                    close(client_data_socket);
                                     printf("[PUT] command send data failed\n");
                                     exit(1);
                                 }
                             }
                             if (numread == FILE_READ_BUFFER_SIZE) continue;
                             else {
-                                close(client_data_socket);
                                 break;
                             }
                         }
+                        close(client_data_socket);
                         fclose(fp);
                         exit(0);
                     } else {
@@ -532,6 +530,9 @@ int main(int argc, char **argv)
                         printf("try login again: please use [open] command\n");
                     }
                 }
+                break;
+                case HELP:
+                print_help();
                 break;
                 case QUIT:
                 case EXIT:
