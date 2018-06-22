@@ -68,10 +68,10 @@ struct command
 	char** paths;
 };
 
-unsigned short login_time;
-char *server_ip;
-bool server_connected;
-char cmd_read[CMD_READ_BUFFER_SIZE];
+extern unsigned short login_time;
+extern char *server_ip;
+extern bool server_connected;
+extern char cmd_read[CMD_READ_BUFFER_SIZE];
 
 
 struct command* userinputtocommand(char [LENUSERINPUT]);

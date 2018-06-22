@@ -1,41 +1,47 @@
 #include "common.h"
 
 static const char commandlist[NCOMMANDS][10] =
-	{
-		"get",
-		"put",
+{
+	"get",
+	"put",
 
-		"mget",
-		"mput",
-		"delete",
-		
-		"cd",
-		"lcd",
-		
-		"mgetwild",
-		"mputwild",
-		
-		"dir",
-		"ldir",
+	"mget",
+	"mput",
+	"delete",
+	
+	"cd",
+	"lcd",
+	
+	"mgetwild",
+	"mputwild",
+	
+	"dir",
+	"ldir",
 
-		"ls",
-		"lls",
-		
-		"mkdir",
-		"lmkdir",
+	"ls",
+	"lls",
+	
+	"mkdir",
+	"lmkdir",
 
-		"rget",
-		"rput",
-		
-		"pwd",
-		"lpwd",
-		"ascii",
-		"binary",
-		"open",
-		"help",
-		"quit",
-		"exit"
-	};
+	"rget",
+	"rput",
+	
+	"pwd",
+	"lpwd",
+	"ascii",
+	"binary",
+	"open",
+	"help",
+	"quit",
+	"exit"
+};
+
+
+unsigned short login_time = 0;
+char *server_ip = NULL;
+bool server_connected = false;
+char cmd_read[CMD_READ_BUFFER_SIZE];
 
 void set0(char *p, size_t size)
 {

@@ -1,5 +1,10 @@
 #include "cmds.h"
 
+char recv_buffer[BUFFER_SIZE];
+char send_buffer[BUFFER_SIZE];
+int client_cmd_socket;
+unsigned int client_cmd_port;
+
 void print_help()
 {
     printf("\nls\n  displays contents of remote current working directory.\n");

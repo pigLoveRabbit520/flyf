@@ -12,12 +12,10 @@
 #include "ftp_client_funcs.h"
 
 extern int errno;
-
-
-char recv_buffer[BUFFER_SIZE];
-char send_buffer[BUFFER_SIZE];
-int client_cmd_socket;
-unsigned int client_cmd_port;
+extern char recv_buffer[BUFFER_SIZE];
+extern char send_buffer[BUFFER_SIZE];
+extern int client_cmd_socket;
+extern unsigned int client_cmd_port;
 
 
 void ls();
