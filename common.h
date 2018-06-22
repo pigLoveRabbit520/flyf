@@ -12,12 +12,6 @@
 #include <unistd.h>
 #include <dirent.h>
 
-#define	DEBUG		1
-
-#define	PORTSERVER	8487
-#define CONTROLPORT	PORTSERVER
-#define DATAPORT	(PORTSERVER + 1)
-
 enum TYPE
 	{
 		REQU,
@@ -43,15 +37,6 @@ enum TYPE
 #define	LENBUFFER	504		// so as to make the whole packet well-rounded ( = 512 bytes)
 #define LENUSERINPUT	1024
 
-struct packet
-{
-	short int conid;
-	short int type;
-	short int comid;
-	short int datalen;
-	char buffer[LENBUFFER];
-};
-
 struct command
 {
 	short int id;
@@ -59,15 +44,11 @@ struct command
 	char** paths;
 };
 
-void set0(struct packet*);
-
-struct packet* ntohp(struct packet*);
-struct packet* htonp(struct packet*);
-
-void printpacket(struct packet*, int);
 struct command* userinputtocommand(char [LENUSERINPUT]);
 void printcommand(struct command* c);
 void freecommand(struct command* c);
+void set0(char *p, size_t size);
+unsigned short get_rand_port();
 
 #define NCOMMANDS 25
 enum COMMAND

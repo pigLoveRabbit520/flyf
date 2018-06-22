@@ -37,9 +37,9 @@ static const char commandlist[NCOMMANDS][10] =
 		"exit"
 	};
 
-void set0(struct packet* p)
+void set0(char *p, size_t size)
 {
-	memset(p, 0, sizeof(struct packet));
+	memset(p, 0, size);
 }
 
 
@@ -127,4 +127,12 @@ void freecommand(struct command* c)
 		free(c->paths);
 	}
 	free(c);
+}
+
+// 客户端打开任意的本地端口 (N > 1024) 
+unsigned short get_rand_port()
+{
+    srand((unsigned) time(NULL));
+    unsigned int number = rand() % 101 + 1; // 产生1-101的随机数
+    return number + 1024;
 }
