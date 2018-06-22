@@ -404,16 +404,26 @@ int main(int argc, char **argv)
                                 break;
                             }
                         }
+                        // 只有当某个sockfd的引用计数为0，close 才会发送FIN段，否则只是将引用计数减1而已
+                        shutdown(client_data_socket, SHUT_WR);
                         close(client_data_socket);
+                        printf("close data socket\n");
                         fclose(fp);
                         exit(0);
                     } else {
                         int status = 0;
                         waitpid(pid, &status, 0);
-                        if (status == 0)
-                            printf("send file %s complete.\n", filename);
-                        else 
+                        if (status != 0)
+                        {
                             printf("send file %s failed.\n", filename);
+                        }
+                        if (get_response(client_cmd_socket, recv_buffer) <= 0)
+                        {
+                            close(client_cmd_socket);
+                            printf("Recieve Upload file end info from server %s failed!\n", server_ip);
+                            continue;
+                        }
+                        printf("%s", recv_buffer);
                     }
 
                 }
