@@ -31,6 +31,7 @@
 #define ERR_READ_FAILED           -454
 #define ERR_INCORRECT_CODE        -465
 
+extern int errno;
 
 char *fgets_wrapper(char *buffer, size_t buflen, FILE *fp);
 int send_cmd(int client_socket, char* buffer);
@@ -48,18 +49,14 @@ int get_server_connected_socket(char *server_ip, unsigned int client_port, unsig
 void set_flag(int, int);
 void clr_flag(int, int);
 bool is_server_disconnected(int client_socket); // server端是否断开连接
-void print_help();
-void ls();
-void lls();
 
-
-extern int errno;
-
+char recv_buffer[BUFFER_SIZE];
+char send_buffer[BUFFER_SIZE];
+int client_cmd_socket;
 unsigned int client_cmd_port = 0;
 unsigned short login_time = 0;
 char *server_ip = NULL;
 bool server_connected = false;
-unsigned int client_cmd_socket;
 char cmd_read[CMD_READ_BUFFER_SIZE];
 
 int set_keepalive(int socket)
@@ -412,20 +409,6 @@ bool is_server_disconnected(int client_socket)
     int length = recv(client_socket, buffer, 10, 0);
     clr_flag(client_socket, O_NONBLOCK);
     return length == 0;
-}
-
-void print_help()
-{
-    printf("\nls\n  displays contents of remote current working directory.\n");
-    printf("\nlls\n  displays contents of local current working directory.\n");
-    printf("\npwd\n  displays path of remote current working directory.\n");
-    printf("\nlpwd\n  displays path of local current working directory.\n");
-    printf("\ncd <path>\n  changes the remote current working directory to the specified <path>.\n");
-    printf("\nlcd <path>\n  changes the local current working directory to the specified <path>.\n");
-    printf("\nget <src> [dest]\n  downloads the remote <src> to local current working directory by the name of [dest] if specified.\n");
-    printf("\nput <src> [dest]\n  uploads the local <src> file to remote current working directory by the name of [dest] if specified.\n");
-    printf("\nhelp\n  displays this message.\n");
-    printf("\nexit\n  terminates this program.\n");
 }
 
 #endif

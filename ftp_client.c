@@ -1,7 +1,5 @@
 #include "ftp_client.h"
-
-char recv_buffer[BUFFER_SIZE];
-char send_buffer[BUFFER_SIZE];
+#include "cmds.h"
 
 // 被动模式
 int main(int argc, char **argv)
@@ -19,11 +17,10 @@ int main(int argc, char **argv)
     }
     server_ip = argv[1];
     client_cmd_port = get_rand_port();
-    int client_cmd_socket = get_server_connected_socket(server_ip, client_cmd_port, FTP_SERVER_PORT);
+    client_cmd_socket = get_server_connected_socket(server_ip, client_cmd_port, FTP_SERVER_PORT);
     if (client_cmd_socket < 0)
         exit(1);
     server_connected = true;
-    int length = 0;
 
     set0(recv_buffer, BUFFER_SIZE);
     set0(send_buffer, BUFFER_SIZE);
@@ -74,10 +71,10 @@ int main(int argc, char **argv)
                 lls();
                 break;
                 case GET:
-                get();
+                get(cmd);
                 break;
                 case PUT:
-                put();
+                put(cmd);
                 break;
                 case CD:
                 cd(cmd);
@@ -104,7 +101,7 @@ int main(int argc, char **argv)
                 mkdir(cmd);
                 break;
                 case OPEN:
-                open_cmd(cmd, client_cmd_socket)
+                open_cmd(cmd);
                 break;
                 case HELP:
                 help();

@@ -1,6 +1,20 @@
 #include "cmds.h"
 
-void ls(unsigned int client_cmd_port, int client_cmd_socket)
+void print_help()
+{
+    printf("\nls\n  displays contents of remote current working directory.\n");
+    printf("\nlls\n  displays contents of local current working directory.\n");
+    printf("\npwd\n  displays path of remote current working directory.\n");
+    printf("\nlpwd\n  displays path of local current working directory.\n");
+    printf("\ncd <path>\n  changes the remote current working directory to the specified <path>.\n");
+    printf("\nlcd <path>\n  changes the local current working directory to the specified <path>.\n");
+    printf("\nget <src> [dest]\n  downloads the remote <src> to local current working directory by the name of [dest] if specified.\n");
+    printf("\nput <src> [dest]\n  uploads the local <src> file to remote current working directory by the name of [dest] if specified.\n");
+    printf("\nhelp\n  displays this message.\n");
+    printf("\nexit\n  terminates this program.\n");
+}
+
+void ls()
 {
     int client_data_socket = enter_passvie_mode(client_cmd_socket, client_cmd_port + 1, send_buffer, recv_buffer);
     if (client_data_socket == ERR_DISCONNECTED)
@@ -126,7 +140,7 @@ void lls()
     }
 }
 
-void get(struct command* cmd, int client_cmd_socket, unsigned int client_cmd_port)
+void get(struct command* cmd)
 {
     if (!cmd->paths)
     {
@@ -249,7 +263,7 @@ void get(struct command* cmd, int client_cmd_socket, unsigned int client_cmd_por
     }
 }
 
-void put(struct command* cmd, int client_cmd_socket, unsigned int client_cmd_port)
+void put(struct command* cmd)
 {
     if (!cmd->paths)
     {
@@ -369,7 +383,7 @@ void cd(struct command* cmd)
     }
     sprintf(send_buffer, "CWD %s\r\n", cmd->paths[0]);
     send_cmd(client_cmd_socket, send_buffer);
-    length = get_response(client_cmd_socket, recv_buffer);
+    int length = get_response(client_cmd_socket, recv_buffer);
     printf("%s", recv_buffer);
 }
 
@@ -378,7 +392,7 @@ void lcd(struct command* cmd)
     if (!cmd->paths)
     {
         printf("please input the path\n");
-        continue;
+        return;
     }
     char *path = cmd->paths[0];
     if (chdir(path) != 0) perror("change local working directory failed");
@@ -393,7 +407,7 @@ void pwd(struct command* cmd)
     sprintf(send_buffer, "PWD\r\n");
     send_cmd(client_cmd_socket, send_buffer);
      // 227
-    length = get_response(client_cmd_socket, recv_buffer);
+    int length = get_response(client_cmd_socket, recv_buffer);
     printf("%s", recv_buffer);
 }
 
@@ -409,7 +423,7 @@ void ascii()
     sprintf(send_buffer, "TYPE A\r\n");
     send_cmd(client_cmd_socket, send_buffer);
      // 227
-    length = get_response(client_cmd_socket, recv_buffer);
+    int length = get_response(client_cmd_socket, recv_buffer);
     printf("%s", recv_buffer);
 }
 
@@ -418,7 +432,7 @@ void binary()
     sprintf(send_buffer, "TYPE I\r\n");
     send_cmd(client_cmd_socket, send_buffer);
      // 227
-    length = get_response(client_cmd_socket, recv_buffer);
+    int length = get_response(client_cmd_socket, recv_buffer);
     printf("%s", recv_buffer);
 }
 
@@ -427,11 +441,11 @@ void delete_cmd(struct command* cmd)
     if (!cmd->paths)
     {
         printf("please select the file\n");
-        continue;
+        return;
     }
     sprintf(send_buffer, "DELE %s\r\n", cmd->paths[0]);
     send_cmd(client_cmd_socket, send_buffer);
-    length = get_response(client_cmd_socket, recv_buffer);
+    int length = get_response(client_cmd_socket, recv_buffer);
     printf("%s", recv_buffer);
 }
 
@@ -440,16 +454,16 @@ void mkdir(struct command* cmd)
     if (!cmd->paths)
     {
         printf("please input the host\n");
-        continue;
+        return;
     }
     char *dir_name = cmd->paths[0];
     sprintf(send_buffer, "MKD %s\r\n", dir_name);
     send_cmd(client_cmd_socket, send_buffer);
-    length = get_response(client_cmd_socket, recv_buffer);
+    int length = get_response(client_cmd_socket, recv_buffer);
     printf("%s", recv_buffer);
 }
 
-void open_cmd(struct command* cmd, int client_cmd_socket)
+void open_cmd(struct command* cmd)
 {
     if (!cmd->paths)
     {
