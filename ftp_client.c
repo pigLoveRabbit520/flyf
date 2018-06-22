@@ -406,11 +406,10 @@ int main(int argc, char **argv)
                         }
                         // 只有当某个sockfd的引用计数为0，close 才会发送FIN段，否则只是将引用计数减1而已
                         shutdown(client_data_socket, SHUT_WR);
-                        close(client_data_socket);
-                        printf("close data socket\n");
                         fclose(fp);
                         exit(0);
                     } else {
+                        close(client_data_socket);
                         int status = 0;
                         waitpid(pid, &status, 0);
                         if (status != 0)
