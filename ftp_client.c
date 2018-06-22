@@ -1,4 +1,3 @@
-#include "ftp_client.h"
 #include "cmds.h"
 
 // 被动模式

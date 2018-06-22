@@ -1,7 +1,24 @@
 #ifndef _CMDS_H
 #define _CMDS_H
 
-#include "ftp_client.h"
+#include <time.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <stdbool.h>
+#include <fcntl.h>
+#include <pwd.h>
+#include <errno.h>
+#include "common.h"
+#include "ftp_client_funcs.h"
+
+extern int errno;
+
+
+char recv_buffer[BUFFER_SIZE];
+char send_buffer[BUFFER_SIZE];
+int client_cmd_socket;
+unsigned int client_cmd_port = 0;
+
 
 void ls();
 void lls();
