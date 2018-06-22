@@ -68,9 +68,9 @@ struct command
 	char** paths;
 };
 
-unsigned short login_time = 0;
-char *server_ip = NULL;
-bool server_connected = false;
+unsigned short login_time;
+char *server_ip;
+bool server_connected;
 char cmd_read[CMD_READ_BUFFER_SIZE];
 
 

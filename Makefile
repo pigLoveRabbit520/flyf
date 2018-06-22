@@ -5,8 +5,8 @@ ftp : $(objects)
 		cc -o ftp $(objects)
 
 ftp_client.o : cmds.h
-ftp_client_funcs.o : ftp_client_funcs.h
-cmds.o : cmds.h ftp_client_funcs.h common.h
+ftp_client_funcs.o : ftp_client_funcs.h common.h
+cmds.o : cmds.h
 common.o : common.h
 encode.o : encode.h
 clean :
