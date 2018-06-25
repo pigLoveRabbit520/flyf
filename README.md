@@ -25,6 +25,7 @@ make
 * 打开data socket后（passive mode），IIS FTP server对`LIST`（其他要传输数据的命令也一样）返回`125`，vsftpd返回`150`
 * close不一定会立即关闭socket发送FIN段（譬如socket被不同进程共享），可以用shutdown解决
 * TCP是流式协议，接收端收到的数据不一定等于发送端发送的数据
+* FTP会有多行消息，三位数字编码的响应码加上`-`，结束行就是该响应码加上空格
 
 
 # TODO
