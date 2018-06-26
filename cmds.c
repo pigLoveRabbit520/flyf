@@ -1,8 +1,5 @@
 #include "cmds.h"
 
-char recv_buffer[BUFFER_SIZE];
-char send_buffer[BUFFER_SIZE];
-int client_cmd_socket;
 unsigned int client_cmd_port;
 
 void print_help()
@@ -32,11 +29,10 @@ void ls()
     {
         return;
     }
-    sprintf(send_buffer, "LIST \r\n");
-    if (send_cmd(client_cmd_socket, send_buffer) <= 0)
+
+    if (send_cmd("LIST \r\n") <= 0)
     {
         close(client_data_socket);
-        close(client_cmd_socket);
         printf("send [LIST] command failed\n");
         return;
     }
@@ -164,8 +160,7 @@ void get(struct command* cmd)
     {
         return;
     } 
-    sprintf(send_buffer, "SIZE %s\r\n", filename);
-    if (send_cmd(client_cmd_socket, send_buffer) <= 0)
+    if (send_cmd("SIZE %s\r\n", filename) <= 0)
     {
         close(client_data_socket);
         close(client_cmd_socket);
@@ -190,8 +185,8 @@ void get(struct command* cmd)
     // eg:213 228\r\n
     printf("file size is %sB\n", filesizeRes);
     free(filesizeRes);
-    sprintf(send_buffer, "RETR %s\r\n", filename);
-    if (send_cmd(client_cmd_socket, send_buffer) <= 0)
+
+    if (send_cmd("RETR %s\r\n", filename) <= 0)
     {
         close(client_data_socket);
         close(client_cmd_socket);
@@ -287,8 +282,8 @@ void put(struct command* cmd)
     {
         return;
     }
-    sprintf(send_buffer, "STOR %s\r\n", filename);
-    if (send_cmd(client_cmd_socket, send_buffer) <= 0)
+
+    if (send_cmd("STOR %s\r\n", filename) <= 0)
     {
         close(client_data_socket);
         close(client_cmd_socket);
@@ -386,8 +381,8 @@ void cd(struct command* cmd)
         printf("please input the path\n");
         return;
     }
-    sprintf(send_buffer, "CWD %s\r\n", cmd->paths[0]);
-    send_cmd(client_cmd_socket, send_buffer);
+
+    send_cmd("CWD %s\r\n", cmd->paths[0]);
     int length = get_response(client_cmd_socket, recv_buffer);
     printf("%s", recv_buffer);
 }
@@ -409,8 +404,7 @@ void lcd(struct command* cmd)
 
 void pwd(struct command* cmd)
 {
-    sprintf(send_buffer, "PWD\r\n");
-    send_cmd(client_cmd_socket, send_buffer);
+    send_cmd("PWD\r\n");
      // 227
     int length = get_response(client_cmd_socket, recv_buffer);
     printf("%s", recv_buffer);
@@ -425,8 +419,7 @@ void lpwd(struct command* cmd)
 
 void ascii()
 {
-    sprintf(send_buffer, "TYPE A\r\n");
-    send_cmd(client_cmd_socket, send_buffer);
+    send_cmd("TYPE A\r\n");
      // 227
     int length = get_response(client_cmd_socket, recv_buffer);
     printf("%s", recv_buffer);
@@ -434,8 +427,7 @@ void ascii()
 
 void binary()
 {
-    sprintf(send_buffer, "TYPE I\r\n");
-    send_cmd(client_cmd_socket, send_buffer);
+    send_cmd("TYPE I\r\n");
      // 227
     int length = get_response(client_cmd_socket, recv_buffer);
     printf("%s", recv_buffer);
@@ -448,8 +440,7 @@ void delete_cmd(struct command* cmd)
         printf("please select the file\n");
         return;
     }
-    sprintf(send_buffer, "DELE %s\r\n", cmd->paths[0]);
-    send_cmd(client_cmd_socket, send_buffer);
+    send_cmd("DELE %s\r\n", cmd->paths[0]);
     int length = get_response(client_cmd_socket, recv_buffer);
     printf("%s", recv_buffer);
 }
@@ -462,8 +453,7 @@ void mkdir(struct command* cmd)
         return;
     }
     char *dir_name = cmd->paths[0];
-    sprintf(send_buffer, "MKD %s\r\n", dir_name);
-    send_cmd(client_cmd_socket, send_buffer);
+    send_cmd("MKD %s\r\n", dir_name);
     int length = get_response(client_cmd_socket, recv_buffer);
     printf("%s", recv_buffer);
 }
@@ -484,7 +474,6 @@ void open_cmd(struct command* cmd)
     int res = user_login(client_cmd_socket, recv_buffer, send_buffer);
     if (res == ERR_DISCONNECTED)
     {
-        close(client_cmd_socket);
         return;
     } else if (res == ERR_READ_FAILED || res == ERR_INCORRECT_CODE)
     {
@@ -499,8 +488,77 @@ void help()
 
 void exit_cmd()
 {
-    sprintf(send_buffer, "QUIT\r\n");
-    send_cmd(client_cmd_socket, send_buffer);
+    send_cmd(send_buffer, "QUIT\r\n");
+    close(client_cmd_socket);
     printf("Goodbye!\n");
     exit(0);
+}
+
+int user_login(int client_cmd_socket, char *recv_buffer, char *send_buffer)
+{
+    int length = 0;
+    if (login_time == 0)
+    {
+        // 接受欢迎命令
+        if (get_response(client_cmd_socket, recv_buffer) <= 0)
+        {
+            printf("Recieve welcome info from server %s failed!\n", server_ip);
+            return ERR_DISCONNECTED;
+        }
+        printf("%s", recv_buffer);
+        login_time++;
+    }
+
+    struct passwd *pws;
+    pws = getpwuid(geteuid());
+    // 输入用户名
+    printf("Name(%s:%s):", server_ip, pws->pw_name);
+    if (fgets_wrapper(cmd_read, CMD_READ_BUFFER_SIZE, stdin) == 0) 
+    {
+        printf("read name failed\n");
+        return ERR_READ_FAILED;
+    }
+
+    if (send_cmd("USER %s\r\n", cmd_read) <= 0)
+    {
+        printf("send [User] command failed\n");
+        return ERR_DISCONNECTED;
+    }
+
+    // 331
+    length = get_response(client_cmd_socket, recv_buffer);
+    if (length < 0)
+    {
+        printf("Recieve [User] command info from server %s failed!\n", server_ip);
+        return ERR_DISCONNECTED;
+    }
+    printf("%s", recv_buffer);
+    if (!respond_with_code(recv_buffer, 331))
+    {
+        return ERR_INCORRECT_CODE;
+    }
+
+    bzero(cmd_read, CMD_READ_BUFFER_SIZE);
+    // 输入密码
+    char *passwd = getpass("Password:");
+
+    if (send_cmd("PASS %s\r\n", passwd) <= 0)
+    {
+        printf("send [PASS] command failed\n");
+        return ERR_DISCONNECTED;
+    }
+    
+    // 230
+    length = get_response(client_cmd_socket, recv_buffer);
+    if (length < 0)
+    {
+        printf("Recieve [PASS] command info from server %s failed!\n", server_ip);
+        return ERR_DISCONNECTED;
+    }
+    printf("%s", recv_buffer);
+    if (!respond_with_code(recv_buffer, 230))
+    {
+        return ERR_INCORRECT_CODE;
+    }
+    return 0;
 }

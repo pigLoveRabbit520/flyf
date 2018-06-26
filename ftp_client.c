@@ -30,7 +30,6 @@ int main(int argc, char **argv)
         int res = user_login(client_cmd_socket, recv_buffer, send_buffer);
         if (res == ERR_DISCONNECTED)
         {
-            close(client_cmd_socket);
             exit(1);
         } else if (res == ERR_READ_FAILED || res == ERR_INCORRECT_CODE)
         {

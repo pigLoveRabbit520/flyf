@@ -12,9 +12,6 @@
 #include "ftp_client_funcs.h"
 
 extern int errno;
-extern char recv_buffer[BUFFER_SIZE];
-extern char send_buffer[BUFFER_SIZE];
-extern int client_cmd_socket;
 extern unsigned int client_cmd_port;
 
 
@@ -33,5 +30,7 @@ void mkdir(struct command* cmd);
 void open_cmd(struct command* cmd);
 void help();
 void exit_cmd();
+
+int user_login(int client_cmd_socket, char *recv_buffer, char *send_buffer);
 
 #endif
