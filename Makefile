@@ -10,4 +10,4 @@ cmds.o : cmds.h
 common.o : common.h
 encode.o : encode.h
 clean :
-		rm ftp $(objects)
+		rm -rf ftp $(objects)
