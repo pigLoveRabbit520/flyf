@@ -31,6 +31,6 @@ void open_cmd(struct command* cmd);
 void help();
 void exit_cmd();
 
-int user_login(int client_cmd_socket, char *recv_buffer, char *send_buffer);
+int user_login();
 
 #endif

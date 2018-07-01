@@ -12,6 +12,11 @@ void empty_buffer()
     set0(send_buffer, BUFFER_SIZE);
 }
 
+void close_cmd_socket()
+{
+    close(client_cmd_socket);
+}
+
 int set_keepalive(int socket)
 {
     int optval = 1;
@@ -66,20 +71,20 @@ bool is_multi_response_end(const char *buffer, const char *code)
 // 例如550-The system cannot find the file specified. 它用-表示下面还有内容
 int get_response()
 {
-    bzero(buffer, BUFFER_SIZE);
-    int length = recv(client_socket, buffer, BUFFER_SIZE, 0);
+    bzero(recv_buffer, BUFFER_SIZE);
+    int length = recv(client_cmd_socket, recv_buffer, BUFFER_SIZE, 0);
     if (length <= 0) return length;
-    if (is_multi_response(buffer))
+    if (is_multi_response(recv_buffer))
     {
         char code[4];
         bzero(code, 4);
-        memcpy(code, buffer, 3);
-        while(!is_multi_response_end(buffer, code))
+        memcpy(code, recv_buffer, 3);
+        while(!is_multi_response_end(recv_buffer, code))
         {
             char anotherBuff[BUFFER_SIZE];
-            int len = recv(client_socket, anotherBuff, BUFFER_SIZE, 0);
+            int len = recv(client_cmd_socket, anotherBuff, BUFFER_SIZE, 0);
             if (len <= 0) return len;
-            memcpy(buffer + length, anotherBuff, len);
+            memcpy(recv_buffer + length, anotherBuff, len);
             length += len;
         }
     }
@@ -198,7 +203,7 @@ int connect_server(int socket, const char *server_ip, unsigned int server_port)
 }
 
 // 进入被动模式
-int enter_passvie_mode(int client_cmd_socket, int cmd_port, char *recv_buffer, char *send_buffer)
+int enter_passvie_mode(int cmd_port)
 {
     // 被动模式
     int client_data_socket = get_binded_socket(cmd_port + 1);
@@ -297,8 +302,9 @@ void clr_flag(int fd, int flags)
         printf("fcntl clear flag error");
 }
 
-bool is_server_disconnected(int client_socket)
+bool is_server_disconnected()
 {
+    int client_socket = client_cmd_socket;
     // 非阻塞
     set_flag(client_socket, O_NONBLOCK);
     char buffer[10];

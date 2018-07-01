@@ -50,9 +50,9 @@ int main(int argc, char **argv)
                 printf("not connected\n");
                 continue;
             }
-            if (server_connected && is_server_disconnected(client_cmd_socket))
+            if (server_connected && is_server_disconnected())
             {
-                close(client_cmd_socket);
+                close_cmd_socket();
                 server_connected = false;
                 printf("not connected\n");
                 continue;
@@ -61,7 +61,7 @@ int main(int argc, char **argv)
             switch(cmd->id)
             {
                 case LS:
-                ls(client_cmd_port, client_cmd_socket);
+                ls();
                 break;
                 case LLS:
                 lls();
@@ -110,7 +110,6 @@ int main(int argc, char **argv)
             freecommand(cmd);
         }
     }
-    //关闭socket
-    close(client_cmd_socket);
+    close_cmd_socket();
     return 0;
 }

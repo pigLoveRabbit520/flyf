@@ -25,6 +25,7 @@ extern char recv_buffer[BUFFER_SIZE];
 
 char *fgets_wrapper(char *buffer, size_t buflen, FILE *fp);
 void empty_buffer();
+void close_cmd_socket();
 int send_cmd(const char* format, ...);
 int get_response();
 bool start_with(const char *pre, const char *str);
@@ -34,11 +35,11 @@ unsigned int cal_data_port(const char *recv_buffer);
 bool is_connected(int socket_fd);
 bool check_server_ip(const char *server_ip);
 int connect_server(int socket, const char *server_ip, unsigned int server_port);
-int enter_passvie_mode(int client_cmd_socket, int cmd_port, char *recv_buffer, char *send_buffer);
+int enter_passvie_mode(int cmd_port);
 int get_server_connected_socket(char *server_ip, unsigned int client_port, unsigned int server_port);
 void set_flag(int, int);
 void clr_flag(int, int);
-bool is_server_disconnected(int client_socket); // server端是否断开连接
+bool is_server_disconnected(); // server端是否断开连接
 int set_keepalive(int socket);
 
 #endif

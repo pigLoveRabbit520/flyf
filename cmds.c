@@ -18,10 +18,10 @@ void print_help()
 
 void ls()
 {
-    int client_data_socket = enter_passvie_mode(client_cmd_socket, client_cmd_port + 1, send_buffer, recv_buffer);
+    int client_data_socket = enter_passvie_mode(client_cmd_port + 1);
     if (client_data_socket == ERR_DISCONNECTED)
     {
-        close(client_cmd_socket);
+        close_cmd_socket();
         server_connected = false;
         return;
     }
@@ -29,7 +29,6 @@ void ls()
     {
         return;
     }
-
     if (send_cmd("LIST \r\n") <= 0)
     {
         close(client_data_socket);
@@ -44,7 +43,7 @@ void ls()
     if (get_response() <= 0)
     {
         close(client_data_socket);
-        close(client_cmd_socket);
+        close_cmd_socket();
         printf("Recieve [LIST] command info from server %s failed!\n", server_ip);
         return;
     }
@@ -149,10 +148,10 @@ void get(struct command* cmd)
         return;
     }
     char *filename = cmd->paths[0];
-    int client_data_socket = enter_passvie_mode(client_cmd_socket, client_cmd_port + 1, send_buffer, recv_buffer);
+    int client_data_socket = enter_passvie_mode(client_cmd_port + 1);
     if (client_data_socket == ERR_DISCONNECTED)
     {
-        close(client_cmd_socket);
+        close_cmd_socket();
         server_connected = false;
         return;
     }
@@ -163,14 +162,14 @@ void get(struct command* cmd)
     if (send_cmd("SIZE %s\r\n", filename) <= 0)
     {
         close(client_data_socket);
-        close(client_cmd_socket);
+        close_cmd_socket();
         printf("send [SIZE] command failed\n");
         return;
     }
     if (get_response() <= 0)
     {
         close(client_data_socket);
-        close(client_cmd_socket);
+        close_cmd_socket();
         printf("Recieve [SIZE] command info from server %s failed!\n", server_ip);
         return;
     }
@@ -189,14 +188,14 @@ void get(struct command* cmd)
     if (send_cmd("RETR %s\r\n", filename) <= 0)
     {
         close(client_data_socket);
-        close(client_cmd_socket);
+        close_cmd_socket();
         printf("send [RETR] command failed\n");
         return;
     }
     if (get_response() <= 0)
     {
         close(client_data_socket);
-        close(client_cmd_socket);
+        close_cmd_socket();
         printf("Recieve [RETR] command info from server %s failed!\n", server_ip);
         return;
     }
@@ -271,10 +270,10 @@ void put(struct command* cmd)
         return;
     }
     char *filename = cmd->paths[0];
-    int client_data_socket = enter_passvie_mode(client_cmd_socket, client_cmd_port + 1, send_buffer, recv_buffer);
+    int client_data_socket = enter_passvie_mode(client_cmd_port + 1);
     if (client_data_socket == ERR_DISCONNECTED)
     {
-        close(client_cmd_socket);
+        close_cmd_socket();
         server_connected = false;
         return;
     }
@@ -286,14 +285,14 @@ void put(struct command* cmd)
     if (send_cmd("STOR %s\r\n", filename) <= 0)
     {
         close(client_data_socket);
-        close(client_cmd_socket);
+        close_cmd_socket();
         printf("send [STOR] command failed\n");
         return;
     }
     if (get_response() <= 0)
     {
         close(client_data_socket);
-        close(client_cmd_socket);
+        close_cmd_socket();
         printf("Recieve [STOR] command info from server %s failed!\n", server_ip);
         return;
     }
@@ -366,7 +365,7 @@ void put(struct command* cmd)
         }
         if (get_response() <= 0)
         {
-            close(client_cmd_socket);
+            close_cmd_socket();
             printf("Recieve Upload file end info from server %s failed!\n", server_ip);
             return;
         }
@@ -467,11 +466,10 @@ void open_cmd(struct command* cmd)
     }
     server_ip = cmd->paths[0];
     client_cmd_port = get_rand_port();
-    client_cmd_socket = get_server_connected_socket(server_ip, client_cmd_port, FTP_SERVER_PORT);
-    if (client_cmd_socket < 0)
+    if (get_server_connected_socket(server_ip, client_cmd_port, FTP_SERVER_PORT) < 0)
         return;
     server_connected = true;
-    int res = user_login(client_cmd_socket, recv_buffer, send_buffer);
+    int res = user_login();
     if (res == ERR_DISCONNECTED)
     {
         return;
@@ -488,8 +486,8 @@ void help()
 
 void exit_cmd()
 {
-    send_cmd(send_buffer, "QUIT\r\n");
-    close(client_cmd_socket);
+    send_cmd("QUIT\r\n");
+    close_cmd_socket();
     printf("Goodbye!\n");
     exit(0);
 }
