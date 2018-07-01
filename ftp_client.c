@@ -16,18 +16,16 @@ int main(int argc, char **argv)
     }
     server_ip = argv[1];
     client_cmd_port = get_rand_port();
-    client_cmd_socket = get_server_connected_socket(server_ip, client_cmd_port, FTP_SERVER_PORT);
-    if (client_cmd_socket < 0)
+    if (get_server_connected_socket(server_ip, client_cmd_port, FTP_SERVER_PORT) < 0)
+    {
         exit(1);
+    }
     server_connected = true;
-
-    set0(recv_buffer, BUFFER_SIZE);
-    set0(send_buffer, BUFFER_SIZE);
     signal(SIGPIPE, SIG_IGN);
 
     for (;;)
     {
-        int res = user_login(client_cmd_socket, recv_buffer, send_buffer);
+        int res = user_login();
         if (res == ERR_DISCONNECTED)
         {
             exit(1);

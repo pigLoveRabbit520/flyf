@@ -22,12 +22,11 @@
 #include "common.h"
 
 extern char recv_buffer[BUFFER_SIZE];
-extern char send_buffer[BUFFER_SIZE];
-extern int client_cmd_socket;
 
 char *fgets_wrapper(char *buffer, size_t buflen, FILE *fp);
+void empty_buffer();
 int send_cmd(const char* format, ...);
-int get_response(int client_socket, char* buffer);
+int get_response();
 bool start_with(const char *pre, const char *str);
 bool respond_with_code(const char *respond, int code); // 是否返回正确响应码
 bool respond_exists_code(const char *respond, int code); // 接收了多行返回是否返回正确响应码

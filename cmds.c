@@ -41,7 +41,7 @@ void ls()
     // 150打开连接
     // linux vsftpd 发送150
     // windows FTP Sever 是125
-    if (get_response(client_cmd_socket, recv_buffer) <= 0)
+    if (get_response() <= 0)
     {
         close(client_data_socket);
         close(client_cmd_socket);
@@ -109,7 +109,7 @@ void ls()
         // 可能会已经收到了226 Transfer complete.了
         if (!respond_exists_code(recv_buffer, 226))
         {
-            if (get_response(client_cmd_socket, recv_buffer) <= 0)
+            if (get_response() <= 0)
             {
                 printf("Recieve data from server %s failed!\n", server_ip);
                 return;
@@ -167,7 +167,7 @@ void get(struct command* cmd)
         printf("send [SIZE] command failed\n");
         return;
     }
-    if (get_response(client_cmd_socket, recv_buffer) <= 0)
+    if (get_response() <= 0)
     {
         close(client_data_socket);
         close(client_cmd_socket);
@@ -193,7 +193,7 @@ void get(struct command* cmd)
         printf("send [RETR] command failed\n");
         return;
     }
-    if (get_response(client_cmd_socket, recv_buffer) <= 0)
+    if (get_response() <= 0)
     {
         close(client_data_socket);
         close(client_cmd_socket);
@@ -247,7 +247,7 @@ void get(struct command* cmd)
         fclose(fp);
         exit(0);
     } else {
-        if (get_response(client_cmd_socket, recv_buffer) <= 0)
+        if (get_response() <= 0)
         {
             printf("[GET] command recieve data from server %s failed!\n", server_ip);
             return;
@@ -290,7 +290,7 @@ void put(struct command* cmd)
         printf("send [STOR] command failed\n");
         return;
     }
-    if (get_response(client_cmd_socket, recv_buffer) <= 0)
+    if (get_response() <= 0)
     {
         close(client_data_socket);
         close(client_cmd_socket);
@@ -364,7 +364,7 @@ void put(struct command* cmd)
         {
             printf("send file %s failed.\n", filename);
         }
-        if (get_response(client_cmd_socket, recv_buffer) <= 0)
+        if (get_response() <= 0)
         {
             close(client_cmd_socket);
             printf("Recieve Upload file end info from server %s failed!\n", server_ip);
@@ -383,7 +383,7 @@ void cd(struct command* cmd)
     }
 
     send_cmd("CWD %s\r\n", cmd->paths[0]);
-    int length = get_response(client_cmd_socket, recv_buffer);
+    int length = get_response();
     printf("%s", recv_buffer);
 }
 
@@ -406,7 +406,7 @@ void pwd(struct command* cmd)
 {
     send_cmd("PWD\r\n");
      // 227
-    int length = get_response(client_cmd_socket, recv_buffer);
+    int length = get_response();
     printf("%s", recv_buffer);
 }
 
@@ -421,7 +421,7 @@ void ascii()
 {
     send_cmd("TYPE A\r\n");
      // 227
-    int length = get_response(client_cmd_socket, recv_buffer);
+    int length = get_response();
     printf("%s", recv_buffer);
 }
 
@@ -429,7 +429,7 @@ void binary()
 {
     send_cmd("TYPE I\r\n");
      // 227
-    int length = get_response(client_cmd_socket, recv_buffer);
+    int length = get_response();
     printf("%s", recv_buffer);
 }
 
@@ -441,7 +441,7 @@ void delete_cmd(struct command* cmd)
         return;
     }
     send_cmd("DELE %s\r\n", cmd->paths[0]);
-    int length = get_response(client_cmd_socket, recv_buffer);
+    int length = get_response();
     printf("%s", recv_buffer);
 }
 
@@ -454,7 +454,7 @@ void mkdir(struct command* cmd)
     }
     char *dir_name = cmd->paths[0];
     send_cmd("MKD %s\r\n", dir_name);
-    int length = get_response(client_cmd_socket, recv_buffer);
+    int length = get_response();
     printf("%s", recv_buffer);
 }
 
@@ -494,13 +494,13 @@ void exit_cmd()
     exit(0);
 }
 
-int user_login(int client_cmd_socket, char *recv_buffer, char *send_buffer)
+int user_login()
 {
     int length = 0;
     if (login_time == 0)
     {
         // 接受欢迎命令
-        if (get_response(client_cmd_socket, recv_buffer) <= 0)
+        if (get_response() <= 0)
         {
             printf("Recieve welcome info from server %s failed!\n", server_ip);
             return ERR_DISCONNECTED;
@@ -526,7 +526,7 @@ int user_login(int client_cmd_socket, char *recv_buffer, char *send_buffer)
     }
 
     // 331
-    length = get_response(client_cmd_socket, recv_buffer);
+    length = get_response();
     if (length < 0)
     {
         printf("Recieve [User] command info from server %s failed!\n", server_ip);
@@ -549,7 +549,7 @@ int user_login(int client_cmd_socket, char *recv_buffer, char *send_buffer)
     }
     
     // 230
-    length = get_response(client_cmd_socket, recv_buffer);
+    length = get_response();
     if (length < 0)
     {
         printf("Recieve [PASS] command info from server %s failed!\n", server_ip);

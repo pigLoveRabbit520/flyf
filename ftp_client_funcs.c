@@ -1,8 +1,16 @@
 #include "ftp_client_funcs.h"
 
+
 char recv_buffer[BUFFER_SIZE];
-char send_buffer[BUFFER_SIZE];
-int client_cmd_socket = -1;
+
+static char send_buffer[BUFFER_SIZE];
+static int client_cmd_socket = -1;
+
+void empty_buffer()
+{
+    set0(recv_buffer, BUFFER_SIZE);
+    set0(send_buffer, BUFFER_SIZE);
+}
 
 int set_keepalive(int socket)
 {
@@ -56,7 +64,7 @@ bool is_multi_response_end(const char *buffer, const char *code)
 
 // 多行错误
 // 例如550-The system cannot find the file specified. 它用-表示下面还有内容
-int get_response(int client_socket, char* buffer)
+int get_response()
 {
     bzero(buffer, BUFFER_SIZE);
     int length = recv(client_socket, buffer, BUFFER_SIZE, 0);
@@ -248,7 +256,13 @@ int get_server_connected_socket(char *server_ip, unsigned int client_port, unsig
         printf("Client bind port failed!\n"); 
         return -1;
     }
-    return connect_server(client_socket, server_ip, server_port) < 0 ? -1 : client_socket;
+    if (connect_server(client_socket, server_ip, server_port) < 0)
+    {
+        return -1;
+    } else {
+        client_cmd_socket = client_socket;
+        return 1;
+    }
 }
 
 bool is_connected(int socket_fd)
