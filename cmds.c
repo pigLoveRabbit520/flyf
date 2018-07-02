@@ -442,7 +442,7 @@ void delete_cmd(struct command* cmd)
     printf("%s", recv_buffer);
 }
 
-void mkdir(struct command* cmd)
+void create_dir(struct command *cmd)
 {
     if (!cmd->paths)
     {

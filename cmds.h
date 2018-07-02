@@ -24,7 +24,7 @@ void lpwd(struct command* cmd);
 void ascii();
 void binary();
 void delete_cmd(struct command* cmd);
-void mkdir(struct command* cmd);
+void create_dir(struct command *cmd);
 void open_cmd(struct command* cmd);
 void help();
 void exit_cmd();

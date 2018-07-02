@@ -92,7 +92,7 @@ int main(int argc, char **argv)
                 delete_cmd(cmd);
                 break;
                 case MKDIR:
-                mkdir(cmd);
+                create_dir(cmd);
                 break;
                 case OPEN:
                 open_cmd(cmd);

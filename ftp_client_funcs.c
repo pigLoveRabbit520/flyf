@@ -79,7 +79,7 @@ static bool is_multi_response_end(const char *buffer, const char *code)
 int get_response()
 {
     bzero(recv_buffer, BUFFER_SIZE);
-    int length = recv(client_cmd_socket, recv_buffer, BUFFER_SIZE, 0);
+    ssize_t length = recv(client_cmd_socket, recv_buffer, BUFFER_SIZE, 0);
     if (length <= 0) return length;
     if (is_multi_response(recv_buffer))
     {
@@ -89,7 +89,7 @@ int get_response()
         while(!is_multi_response_end(recv_buffer, code))
         {
             char anotherBuff[BUFFER_SIZE];
-            int len = recv(client_cmd_socket, anotherBuff, BUFFER_SIZE, 0);
+            ssize_t len = recv(client_cmd_socket, anotherBuff, BUFFER_SIZE, 0);
             if (len <= 0) return len;
             memcpy(recv_buffer + length, anotherBuff, len);
             length += len;
@@ -225,7 +225,7 @@ int enter_passvie_mode()
         return ERR_DISCONNECTED;
     }
      // 227
-    if (get_response(client_cmd_socket, recv_buffer) <= 0)
+    if (get_response() <= 0)
     {
         close(client_data_socket);
         printf("Recieve [PASV] command info from server %s failed!\n", server_ip);
@@ -317,7 +317,7 @@ bool is_server_disconnected()
     // 非阻塞
     set_flag(client_socket, O_NONBLOCK);
     char buffer[10];
-    int length = recv(client_socket, buffer, 10, 0);
+    ssize_t length = recv(client_socket, buffer, 10, 0);
     clr_flag(client_socket, O_NONBLOCK);
     return length == 0;
 }
