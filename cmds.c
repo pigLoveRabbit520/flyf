@@ -101,7 +101,7 @@ void ls()
             free(ptr);
             free(tmp_ptr);
         }
-        exit(0);
+        _exit(0);
     } else {
         // 可能会已经收到了226 Transfer complete.了
         if (!respond_exists_code(recv_buffer, 226))
@@ -131,7 +131,7 @@ void lls()
     } else if (pid == 0) {
         if (execl("/bin/ls", "ls", "-l", "-a", NULL) < 0) {  
             perror("error on exec");  
-            exit(0);
+            _exit(0);
         }
     } else {
         wait(NULL);
@@ -242,7 +242,7 @@ void get(struct command* cmd)
             fwrite(data_buffer, char_size, length, fp);
         }
         fclose(fp);
-        exit(0);
+        _exit(0);
     } else {
         if (get_response() <= 0)
         {
@@ -352,7 +352,7 @@ void put(struct command* cmd)
         // 只有当某个sockfd的引用计数为0，close 才会发送FIN段，否则只是将引用计数减1而已
         shutdown(client_data_socket, SHUT_WR);
         fclose(fp);
-        exit(0);
+        _exit(0);
     } else {
         close(client_data_socket);
         int status = 0;
