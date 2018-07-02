@@ -5,6 +5,8 @@ char recv_buffer[BUFFER_SIZE];
 
 static char send_buffer[BUFFER_SIZE];
 static int client_cmd_socket = -1;
+static unsigned int client_cmd_port = 0;
+static const char *server_ip = NULL;
 
 void empty_buffer()
 {
@@ -15,6 +17,11 @@ void empty_buffer()
 void close_cmd_socket()
 {
     close(client_cmd_socket);
+}
+
+const char* get_server_ip()
+{
+    return server_ip;
 }
 
 int set_keepalive(int socket)
@@ -44,7 +51,7 @@ int send_cmd(const char* format, ...)
     return len;
 }
 
-bool match_regex(const char* pattern, const char* str)
+static bool match_regex(const char* pattern, const char* str)
 {
     bool result = false;
     regex_t regex;
@@ -55,12 +62,12 @@ bool match_regex(const char* pattern, const char* str)
     return result;
 }
 
-bool is_multi_response(char *str)
+static bool is_multi_response(char *str)
 {
     return match_regex("^[0-9]{3}-", str);
 }
 
-bool is_multi_response_end(const char *buffer, const char *code)
+static bool is_multi_response_end(const char *buffer, const char *code)
 {
     char pattern[10];
     sprintf(pattern, "%s End\r\n", code);
@@ -203,10 +210,10 @@ int connect_server(int socket, const char *server_ip, unsigned int server_port)
 }
 
 // 进入被动模式
-int enter_passvie_mode(int cmd_port)
+int enter_passvie_mode()
 {
     // 被动模式
-    int client_data_socket = get_binded_socket(cmd_port + 1);
+    int client_data_socket = get_binded_socket(client_cmd_port + 1);
     if (client_data_socket < 0)
     {
         return ERR_CREATE_BINDED_SOCKTED;
@@ -241,7 +248,7 @@ int enter_passvie_mode(int cmd_port)
     return client_data_socket;
 }
 
-int get_server_connected_socket(char *server_ip, unsigned int client_port, unsigned int server_port)
+int get_server_connected_socket(const char *ip, unsigned int client_port, unsigned int server_port)
 {
     // 设置一个socket地址结构client_addr,代表客户机internet地址, 端口
     struct sockaddr_in client_addr;
@@ -261,10 +268,12 @@ int get_server_connected_socket(char *server_ip, unsigned int client_port, unsig
         printf("Client bind port failed!\n"); 
         return -1;
     }
-    if (connect_server(client_socket, server_ip, server_port) < 0)
+    if (connect_server(client_socket, ip, server_port) < 0)
     {
         return -1;
     } else {
+        server_ip = ip;
+        client_cmd_port = client_port;
         client_cmd_socket = client_socket;
         return 1;
     }

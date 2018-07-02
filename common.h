@@ -70,7 +70,6 @@ struct command
 };
 
 extern unsigned short login_time;
-extern char *server_ip;
 extern bool server_connected;
 extern char cmd_read[CMD_READ_BUFFER_SIZE];
 

@@ -12,8 +12,6 @@
 #include "ftp_client_funcs.h"
 
 extern int errno;
-extern unsigned int client_cmd_port;
-
 
 void ls();
 void lls();

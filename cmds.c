@@ -1,7 +1,5 @@
 #include "cmds.h"
 
-unsigned int client_cmd_port;
-
 void print_help()
 {
     printf("\nls\n  displays contents of remote current working directory.\n");
@@ -18,7 +16,7 @@ void print_help()
 
 void ls()
 {
-    int client_data_socket = enter_passvie_mode(client_cmd_port + 1);
+    int client_data_socket = enter_passvie_mode();
     if (client_data_socket == ERR_DISCONNECTED)
     {
         close_cmd_socket();
@@ -44,7 +42,7 @@ void ls()
     {
         close(client_data_socket);
         close_cmd_socket();
-        printf("Recieve [LIST] command info from server %s failed!\n", server_ip);
+        printf("Recieve [LIST] command info from server %s failed!\n", get_server_ip());
         return;
     }
     if (!respond_with_code(recv_buffer, 125) && !respond_with_code(recv_buffer, 150))
@@ -110,7 +108,7 @@ void ls()
         {
             if (get_response() <= 0)
             {
-                printf("Recieve data from server %s failed!\n", server_ip);
+                printf("Recieve data from server %s failed!\n", get_server_ip());
                 return;
             }
             if (!respond_with_code(recv_buffer, 226))
@@ -148,7 +146,7 @@ void get(struct command* cmd)
         return;
     }
     char *filename = cmd->paths[0];
-    int client_data_socket = enter_passvie_mode(client_cmd_port + 1);
+    int client_data_socket = enter_passvie_mode();
     if (client_data_socket == ERR_DISCONNECTED)
     {
         close_cmd_socket();
@@ -170,7 +168,7 @@ void get(struct command* cmd)
     {
         close(client_data_socket);
         close_cmd_socket();
-        printf("Recieve [SIZE] command info from server %s failed!\n", server_ip);
+        printf("Recieve [SIZE] command info from server %s failed!\n", get_server_ip());
         return;
     }
     if (!respond_with_code(recv_buffer, 213))
@@ -196,7 +194,7 @@ void get(struct command* cmd)
     {
         close(client_data_socket);
         close_cmd_socket();
-        printf("Recieve [RETR] command info from server %s failed!\n", server_ip);
+        printf("Recieve [RETR] command info from server %s failed!\n", get_server_ip());
         return;
     }
     if (!respond_with_code(recv_buffer, 125) && !respond_with_code(recv_buffer, 150))
@@ -248,7 +246,7 @@ void get(struct command* cmd)
     } else {
         if (get_response() <= 0)
         {
-            printf("[GET] command recieve data from server %s failed!\n", server_ip);
+            printf("[GET] command recieve data from server %s failed!\n", get_server_ip());
             return;
         }
         if (!respond_with_code(recv_buffer, 226))
@@ -270,7 +268,7 @@ void put(struct command* cmd)
         return;
     }
     char *filename = cmd->paths[0];
-    int client_data_socket = enter_passvie_mode(client_cmd_port + 1);
+    int client_data_socket = enter_passvie_mode();
     if (client_data_socket == ERR_DISCONNECTED)
     {
         close_cmd_socket();
@@ -293,7 +291,7 @@ void put(struct command* cmd)
     {
         close(client_data_socket);
         close_cmd_socket();
-        printf("Recieve [STOR] command info from server %s failed!\n", server_ip);
+        printf("Recieve [STOR] command info from server %s failed!\n", get_server_ip());
         return;
     }
     if (!respond_with_code(recv_buffer, 125) && !respond_with_code(recv_buffer, 150))
@@ -366,7 +364,7 @@ void put(struct command* cmd)
         if (get_response() <= 0)
         {
             close_cmd_socket();
-            printf("Recieve Upload file end info from server %s failed!\n", server_ip);
+            printf("Recieve Upload file end info from server %s failed!\n", get_server_ip());
             return;
         }
         printf("%s", recv_buffer);
@@ -464,9 +462,8 @@ void open_cmd(struct command* cmd)
         printf("please input the host\n");
         return;
     }
-    server_ip = cmd->paths[0];
-    client_cmd_port = get_rand_port();
-    if (get_server_connected_socket(server_ip, client_cmd_port, FTP_SERVER_PORT) < 0)
+    char *server_ip = cmd->paths[0];
+    if (get_server_connected_socket(server_ip, get_rand_port(), FTP_SERVER_PORT) < 0)
         return;
     server_connected = true;
     int res = user_login();
@@ -500,7 +497,7 @@ int user_login()
         // 接受欢迎命令
         if (get_response() <= 0)
         {
-            printf("Recieve welcome info from server %s failed!\n", server_ip);
+            printf("Recieve welcome info from server %s failed!\n", get_server_ip());
             return ERR_DISCONNECTED;
         }
         printf("%s", recv_buffer);
@@ -510,7 +507,7 @@ int user_login()
     struct passwd *pws;
     pws = getpwuid(geteuid());
     // 输入用户名
-    printf("Name(%s:%s):", server_ip, pws->pw_name);
+    printf("Name(%s:%s):", get_server_ip(), pws->pw_name);
     if (fgets_wrapper(cmd_read, CMD_READ_BUFFER_SIZE, stdin) == 0) 
     {
         printf("read name failed\n");
@@ -524,10 +521,9 @@ int user_login()
     }
 
     // 331
-    length = get_response();
-    if (length < 0)
+    if (get_response() < 0)
     {
-        printf("Recieve [User] command info from server %s failed!\n", server_ip);
+        printf("Recieve [User] command info from server %s failed!\n", get_server_ip());
         return ERR_DISCONNECTED;
     }
     printf("%s", recv_buffer);
@@ -547,10 +543,9 @@ int user_login()
     }
     
     // 230
-    length = get_response();
-    if (length < 0)
+    if (get_response() < 0)
     {
-        printf("Recieve [PASS] command info from server %s failed!\n", server_ip);
+        printf("Recieve [PASS] command info from server %s failed!\n", get_server_ip());
         return ERR_DISCONNECTED;
     }
     printf("%s", recv_buffer);

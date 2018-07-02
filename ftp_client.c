@@ -14,9 +14,7 @@ int main(int argc, char **argv)
         perror("Server IP address error!");
         exit(1);
     }
-    server_ip = argv[1];
-    client_cmd_port = get_rand_port();
-    if (get_server_connected_socket(server_ip, client_cmd_port, FTP_SERVER_PORT) < 0)
+    if (get_server_connected_socket(argv[1], get_rand_port(), FTP_SERVER_PORT) < 0)
     {
         exit(1);
     }

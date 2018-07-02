@@ -39,7 +39,6 @@ static const char commandlist[NCOMMANDS][10] =
 
 
 unsigned short login_time = 0;
-char *server_ip = NULL;
 bool server_connected = false;
 char cmd_read[CMD_READ_BUFFER_SIZE];
 

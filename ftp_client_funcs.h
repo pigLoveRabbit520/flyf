@@ -35,11 +35,12 @@ unsigned int cal_data_port(const char *recv_buffer);
 bool is_connected(int socket_fd);
 bool check_server_ip(const char *server_ip);
 int connect_server(int socket, const char *server_ip, unsigned int server_port);
-int enter_passvie_mode(int cmd_port);
-int get_server_connected_socket(char *server_ip, unsigned int client_port, unsigned int server_port);
+int enter_passvie_mode();
+int get_server_connected_socket(const char *server_ip, unsigned int client_port, unsigned int server_port);
 void set_flag(int, int);
 void clr_flag(int, int);
 bool is_server_disconnected(); // server端是否断开连接
 int set_keepalive(int socket);
+const char* get_server_ip();
 
 #endif
