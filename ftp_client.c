@@ -1,3 +1,4 @@
+#include <netdb.h>
 #include "cmds.h"
 
 // 被动模式
@@ -8,13 +9,20 @@ int main(int argc, char **argv)
         printf("Usage: %s Server IP Address\n", argv[0]);
         exit(1);
     }
-    // 检查ip合法
-    if (!check_server_ip(argv[1]))
+    char *server_ip = NULL;
+    struct hostent *hptr;
+    if((hptr = gethostbyname(argv[1])) == NULL)
     {
-        perror("Server IP address error!");
-        exit(1);
+        // 检查ip合法
+        if (!check_server_ip(argv[1]))
+        {
+            perror("Server IP address error!");
+            exit(1);
+        }
+    } else {
+        server_ip = inet_ntoa(*(struct in_addr*)hptr->h_addr_list[0]);
     }
-    if (get_server_connected_socket(argv[1], get_rand_port(), FTP_SERVER_PORT) < 0)
+    if (get_server_connected_socket(server_ip, get_rand_port(), FTP_SERVER_PORT) < 0)
     {
         exit(1);
     }
