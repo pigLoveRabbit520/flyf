@@ -1,27 +1,37 @@
 #include <netdb.h>
 #include "cmds.h"
 
+char* getServerIpByHostname(const char* name)
+{
+    struct hostent *hptr;
+    if((hptr = gethostbyname(name)) == NULL)
+    {
+        return NULL;
+    }
+    const char* server_ip = inet_ntoa(*(struct in_addr*)hptr->h_addr_list[0]);
+    size_t len = strlen(server_ip);
+    char *copy = malloc(len + 1);
+    strcpy(copy, server_ip);
+    // free(hptr);
+    return copy;
+}
+
 // 被动模式
 int main(int argc, char **argv)
 {
-    if (argc != 2)
+    if (argc < 2)
     {
-        printf("Usage: %s Server IP Address\n", argv[0]);
+        printf("Usage: %s [server ip address] [port]\n", argv[0]);
         exit(1);
     }
+    char *hostname = argv[1];
     char *server_ip = NULL;
-    struct hostent *hptr;
-    if((hptr = gethostbyname(argv[1])) == NULL)
+    if ((server_ip = getServerIpByHostname(hostname)) == NULL)
     {
-        // 检查ip合法
-        if (!check_server_ip(argv[1]))
-        {
-            perror("Server IP address error!");
-            exit(1);
-        }
-    } else {
-        server_ip = inet_ntoa(*(struct in_addr*)hptr->h_addr_list[0]);
+        printf("gethostbyname error: %s\n", hostname);
+        exit(1);
     }
+    printf("using ip %s", server_ip);
     if (get_server_connected_socket(server_ip, get_rand_port(), FTP_SERVER_PORT) < 0)
     {
         exit(1);
