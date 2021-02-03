@@ -265,7 +265,7 @@ int get_server_connected_socket(const char *ip, unsigned int client_port, unsign
     //把客户机的socket和客户机的socket地址结构联系起来
     if(bind(client_socket, (struct sockaddr*)&client_addr, sizeof(client_addr)))
     {
-        printf("Client bind port failed!\n"); 
+        printf("client bind port failed!\n");
         return -1;
     }
     if (connect_server(client_socket, ip, server_port) < 0)
