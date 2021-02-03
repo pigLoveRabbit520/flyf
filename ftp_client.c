@@ -1,19 +1,16 @@
 #include <netdb.h>
 #include "cmds.h"
 
-char* getServerIpByHostname(const char* name)
+const char* getServerIpByHostname(const char* name)
 {
     struct hostent *hptr;
     if((hptr = gethostbyname(name)) == NULL)
     {
         return NULL;
     }
+    // gethostbyname may return static memory pointer
     const char* server_ip = inet_ntoa(*(struct in_addr*)hptr->h_addr_list[0]);
-    size_t len = strlen(server_ip);
-    char *copy = malloc(len + 1);
-    strcpy(copy, server_ip);
-    // free(hptr);
-    return copy;
+    return server_ip;
 }
 
 // 被动模式
@@ -25,14 +22,27 @@ int main(int argc, char **argv)
         exit(1);
     }
     char *hostname = argv[1];
-    char *server_ip = NULL;
+    const char *server_ip = NULL;
+    unsigned int server_port = FTP_SERVER_PORT;
+
     if ((server_ip = getServerIpByHostname(hostname)) == NULL)
     {
         printf("gethostbyname error: %s\n", hostname);
         exit(1);
     }
-    printf("using ip %s", server_ip);
-    if (get_server_connected_socket(server_ip, get_rand_port(), FTP_SERVER_PORT) < 0)
+    if (argc >= 3)
+    {
+        const char* port_str = argv[2];
+        unsigned int port = (unsigned int)atoi(port_str);
+        if (port == 0)
+        {
+            printf("port is valid: %s\n", port_str);
+            exit(1);
+        }
+        server_port = port;
+    }
+
+    if (get_server_connected_socket(server_ip, get_rand_port(), server_port) < 0)
     {
         exit(1);
     }
@@ -55,7 +65,7 @@ int main(int argc, char **argv)
     struct command* cmd;
     for (;;)
     {
-        printf("FTP>");
+        printf("FTP> ");
         if (fgets_wrapper(cmd_read, CMD_READ_BUFFER_SIZE, stdin) != 0)
         {
             cmd = userinputtocommand(cmd_read);
