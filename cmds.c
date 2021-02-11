@@ -463,16 +463,33 @@ void open_cmd(struct command* cmd)
         return;
     }
     char *server_ip = cmd->paths[0];
-    if (get_server_connected_socket(server_ip, get_rand_port(), FTP_SERVER_PORT) < 0)
-        return;
-    server_connected = true;
+    unsigned int server_port = FTP_SERVER_PORT;
+    if (cmd->npaths >= 2)
+    {
+        const char* port_str = cmd->paths[1];
+        unsigned int port = (unsigned int)atoi(port_str);
+        if (port == 0)
+        {
+            printf("port is valid: %s\n", port_str);
+            return;
+        }
+        server_port = port;
+    }
+
+    if (!server_connected)
+    {
+        if (get_server_connected_socket(server_ip, get_rand_port(), server_port) < 0)
+            return;
+        server_connected = true;
+    }
+    
     int res = user_login();
     if (res == ERR_DISCONNECTED)
     {
         return;
     } else if (res == ERR_READ_FAILED || res == ERR_INCORRECT_CODE)
     {
-        printf("try login again: please use [open] command\n");
+        printf("try to login again: please use [open] command\n");
     }
 }
 

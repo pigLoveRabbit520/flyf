@@ -65,7 +65,7 @@ static void append_path(struct command* c, char* s)
 	c->paths = temppaths;
 }
 
-struct command* userinputtocommand(char s[LENUSERINPUT])
+struct command*  userinputtocommand(char s[LENUSERINPUT])
 {
 	struct command* cmd = (struct command*) malloc(sizeof(struct command));
 	cmd->id = -1;
@@ -102,7 +102,6 @@ struct command* userinputtocommand(char s[LENUSERINPUT])
 		return cmd;
 	else
 	{
-		fprintf(stderr, "Unkown command\n");
 		return NULL;
 	}
 }

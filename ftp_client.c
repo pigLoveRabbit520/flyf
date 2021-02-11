@@ -42,24 +42,15 @@ int main(int argc, char **argv)
         server_port = port;
     }
 
-    if (get_server_connected_socket(server_ip, get_rand_port(), server_port) < 0)
+    if (get_server_connected_socket(server_ip, get_rand_port(), server_port) >= 0)
     {
-        exit(1);
-    }
-    server_connected = true;
-    signal(SIGPIPE, SIG_IGN);
-
-    for (;;)
-    {
+        server_connected = true;
+        signal(SIGPIPE, SIG_IGN);
         int res = user_login();
         if (res == ERR_DISCONNECTED)
         {
-            exit(1);
-        } else if (res == ERR_READ_FAILED || res == ERR_INCORRECT_CODE)
-        {
-            printf("login failed\n");
-        } else
-            break;
+            server_connected = false;
+        }
     }
 
     struct command* cmd;
