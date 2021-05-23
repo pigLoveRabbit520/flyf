@@ -50,3 +50,4 @@ make
 
 # 参考文章
 * [在linux下使用FTP命令传输文件](https://www.myfreax.com/transfer-files-using-ftp-command-under-linux/)
+* [Linux recv()](https://www.ibm.com/docs/en/zos/2.2.0?topic=functions-recv-receive-data-socket)
