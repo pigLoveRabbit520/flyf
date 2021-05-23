@@ -1,6 +1,5 @@
 #include "ftp_client_funcs.h"
 
-
 char recv_buffer[BUFFER_SIZE];
 
 static char send_buffer[BUFFER_SIZE];
@@ -19,7 +18,7 @@ void close_cmd_socket()
     close(client_cmd_socket);
 }
 
-const char* get_server_ip()
+const char *get_server_ip()
 {
     return server_ip;
 }
@@ -27,15 +26,16 @@ const char* get_server_ip()
 int set_keepalive(int socket)
 {
     int optval = 1;
-    if(setsockopt(socket, SOL_SOCKET, SO_KEEPALIVE, &optval, sizeof(optval)) < 0) {
-       perror("setsockopt()");
-       close(socket);
-       return -1;
+    if (setsockopt(socket, SOL_SOCKET, SO_KEEPALIVE, &optval, sizeof(optval)) < 0)
+    {
+        perror("setsockopt()");
+        close(socket);
+        return -1;
     }
     return 0;
 }
 
-int send_cmd(const char* format, ...)
+int send_cmd(const char *format, ...)
 {
     va_list argp;
     va_start(argp, format);
@@ -51,14 +51,15 @@ int send_cmd(const char* format, ...)
     return len;
 }
 
-static bool match_regex(const char* pattern, const char* str)
+static bool match_regex(const char *pattern, const char *str)
 {
     bool result = false;
     regex_t regex;
     regcomp(&regex, pattern, REG_EXTENDED);
     int reti = regexec(&regex, str, 0, NULL, 0);
-    if (reti == 0) result = true;
-    regfree( &regex );
+    if (reti == 0)
+        result = true;
+    regfree(&regex);
     return result;
 }
 
@@ -80,17 +81,19 @@ int get_response()
 {
     bzero(recv_buffer, BUFFER_SIZE);
     ssize_t length = recv(client_cmd_socket, recv_buffer, BUFFER_SIZE, 0);
-    if (length <= 0) return length;
+    if (length <= 0)
+        return length;
     if (is_multi_response(recv_buffer))
     {
         char code[4];
         bzero(code, 4);
         memcpy(code, recv_buffer, 3);
-        while(!is_multi_response_end(recv_buffer, code))
+        while (!is_multi_response_end(recv_buffer, code))
         {
             char anotherBuff[BUFFER_SIZE];
             ssize_t len = recv(client_cmd_socket, anotherBuff, BUFFER_SIZE, 0);
-            if (len <= 0) return len;
+            if (len <= 0)
+                return len;
             memcpy(recv_buffer + length, anotherBuff, len);
             length += len;
         }
@@ -103,8 +106,8 @@ char *fgets_wrapper(char *buffer, size_t buflen, FILE *fp)
     if (fgets(buffer, buflen, fp) != 0)
     {
         size_t len = strlen(buffer);
-        if (len > 0 && buffer[len-1] == '\n')
-            buffer[len-1] = '\0';
+        if (len > 0 && buffer[len - 1] == '\n')
+            buffer[len - 1] = '\0';
         return buffer;
     }
     return 0;
@@ -142,12 +145,13 @@ unsigned int cal_data_port(const char *recv_buffer)
     token = strtok(passive_res, delim);
     int token_idx = 0;
     int p1, p2;
-    while(token != NULL)
+    while (token != NULL)
     {
         if (token_idx == 4)
         {
             p1 = atoi(token);
-        } else if (token_idx == 5)
+        }
+        else if (token_idx == 5)
         {
             p2 = atoi(token);
             break;
@@ -173,18 +177,18 @@ int get_binded_socket(unsigned int local_port)
     client_addr.sin_addr.s_addr = htons(INADDR_ANY);
     client_addr.sin_port = local_port;
     int client_socket = socket(AF_INET, SOCK_STREAM, 0);
-    if(client_socket < 0)
+    if (client_socket < 0)
     {
         perror("Create socket failed!");
     }
     // 端口复用
     int opt = 1;
-    if (setsockopt(client_socket, SOL_SOCKET,SO_REUSEADDR, &opt, sizeof(opt)))
+    if (setsockopt(client_socket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)))
     {
         perror("Setsockopt failed");
-        return -1; 
+        return -1;
     }
-    if(bind(client_socket, (struct sockaddr*)&client_addr, sizeof(client_addr)))
+    if (bind(client_socket, (struct sockaddr *)&client_addr, sizeof(client_addr)))
     {
         perror("Client socket bind port failed!\n");
         return -1;
@@ -200,7 +204,7 @@ int connect_server(int socket, const char *server_ip, unsigned int server_port)
     inet_aton(server_ip, &server_addr.sin_addr);
     server_addr.sin_port = htons(server_port);
     // 向服务器发起连接,连接成功后socket代表了客户机和服务器的一个socket连接
-    if(connect(socket, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0)
+    if (connect(socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
     {
         printf("Can not connect to %s on port %d\n", server_ip, server_port);
         perror("");
@@ -219,12 +223,13 @@ int enter_passvie_mode()
         return ERR_CREATE_BINDED_SOCKTED;
     }
 
-    if (send_cmd("PASV\r\n") <= 0) {
+    if (send_cmd("PASV\r\n") <= 0)
+    {
         close(client_data_socket);
         printf("send [PASV] command failed\n");
         return ERR_DISCONNECTED;
     }
-     // 227
+    // 227
     if (get_response() <= 0)
     {
         close(client_data_socket);
@@ -244,7 +249,7 @@ int enter_passvie_mode()
         close(client_data_socket);
         return ERR_CONNECT_SERVER_FAIL;
     }
-    
+
     return client_data_socket;
 }
 
@@ -252,18 +257,18 @@ int get_server_connected_socket(const char *ip, unsigned int client_port, unsign
 {
     // 设置一个socket地址结构client_addr,代表客户机internet地址, 端口
     struct sockaddr_in client_addr;
-    bzero(&client_addr, sizeof(client_addr)); // 把一段内存区的内容全部设置为0
-    client_addr.sin_family = AF_INET;    // internet协议族
-    client_addr.sin_addr.s_addr = htons(INADDR_ANY);// INADDR_ANY表示自动获取本机地址
-    client_addr.sin_port = htons(client_port);    // 0表示让系统自动分配一个空闲端口
+    bzero(&client_addr, sizeof(client_addr));        // 把一段内存区的内容全部设置为0
+    client_addr.sin_family = AF_INET;                // internet协议族
+    client_addr.sin_addr.s_addr = htons(INADDR_ANY); // INADDR_ANY表示自动获取本机地址
+    client_addr.sin_port = htons(client_port);       // 0表示让系统自动分配一个空闲端口
     int client_socket = socket(AF_INET, SOCK_STREAM, 0);
-    if(client_socket < 0)
+    if (client_socket < 0)
     {
         printf("Create client socket failed!\n");
         return -1;
     }
     //把客户机的socket和客户机的socket地址结构联系起来
-    if(bind(client_socket, (struct sockaddr*)&client_addr, sizeof(client_addr)))
+    if (bind(client_socket, (struct sockaddr *)&client_addr, sizeof(client_addr)))
     {
         printf("client bind port failed!\n");
         return -1;
@@ -271,7 +276,9 @@ int get_server_connected_socket(const char *ip, unsigned int client_port, unsign
     if (connect_server(client_socket, ip, server_port) < 0)
     {
         return -1;
-    } else {
+    }
+    else
+    {
         server_ip = ip;
         client_cmd_port = client_port;
         client_cmd_socket = client_socket;
@@ -282,10 +289,12 @@ int get_server_connected_socket(const char *ip, unsigned int client_port, unsign
 bool is_connected(int socket_fd)
 {
     int error = 0;
-    socklen_t len = sizeof (error);
-    int retval = getsockopt (socket_fd, SOL_SOCKET, SO_ERROR, &error, &len);
-    if (retval != 0) return false;
-    if (error != 0) return false;
+    socklen_t len = sizeof(error);
+    int retval = getsockopt(socket_fd, SOL_SOCKET, SO_ERROR, &error, &len);
+    if (retval != 0)
+        return false;
+    if (error != 0)
+        return false;
     return true;
 }
 
@@ -317,7 +326,7 @@ bool is_server_disconnected()
     // 非阻塞
     set_flag(client_socket, O_NONBLOCK);
     char buffer[10];
-    ssize_t length = recv(client_socket, buffer, 10, 0);
+    ssize_t length = recv(client_socket, buffer, 10, MSG_PEEK);
     clr_flag(client_socket, O_NONBLOCK);
     return length == 0;
 }
